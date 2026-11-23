@@ -422,7 +422,7 @@ class SchaltzentralePanel extends HTMLElement {
       const stepper = (side) => `
         <div class="row gap8">
           <button class="step" data-a="step" data-side="${side}" data-v="-1" aria-label="Früher">−</button>
-          <span class="val">${esc(this._label(w[side]))}</span>
+          ${this._valueBox(w[side], side)}
           <button class="step" data-a="step" data-side="${side}" data-v="1" aria-label="Später">+</button>
         </div>`;
       const dayNames = w.days.length === 7 ? "täglich" : w.days.join(",") === "0,1,2,3,4" ? "Mo–Fr" : w.days.join(",") === "5,6" ? "Sa–So" : w.days.map((x) => DAYS[x]).join(", ") || "keinen Tag";
@@ -504,9 +504,25 @@ class SchaltzentralePanel extends HTMLElement {
     root.addEventListener("change", (ev) => this._field(ev.target));
     root.addEventListener("input", (ev) => {
       if (ev.target.id === "pick-q") { this._ui.pickQ = ev.target.value; this._paintPicker(); }
+      const tp = ev.target.dataset.tp;
+      if (tp === "hh" || tp === "mm") ev.target.value = ev.target.value.replace(/\D/g, "");
+      // nach zwei Ziffern Stunde direkt zu den Minuten springen
+      if (tp === "hh" && ev.target.value.length === 2) {
+        const mm = ev.target.parentElement.querySelector('[data-tp="mm"]');
+        if (mm) { mm.focus(); mm.select(); }
+      }
+    });
+    root.addEventListener("focusin", (ev) => { if (ev.target.dataset?.tp) ev.target.select(); });
+    root.addEventListener("focusout", (ev) => {
+      const el = ev.target;
+      if (!el.dataset?.tp) return;
+      const box = el.closest(".timebox");
+      if (ev.relatedTarget && box && box.contains(ev.relatedTarget)) return;  // Wechsel Stunde -> Minute
+      setTimeout(() => this._commitTime(el.dataset.side), 0);
     });
     root.addEventListener("keydown", (ev) => {
-      if (ev.key === "Enter" && ev.target.tagName === "INPUT" && ev.target.dataset.f) ev.target.blur();
+      if (ev.key === "Enter" && ev.target.tagName === "INPUT" && (ev.target.dataset.f || ev.target.dataset.tp)) ev.target.blur();
+      if (ev.key === "Escape" && ev.target.dataset?.tp) { ev.target.blur(); }
     });
     root.addEventListener("pointerdown", (ev) => this._dragStart(ev));
   }
@@ -608,7 +624,11 @@ class SchaltzentralePanel extends HTMLElement {
       case "step": {
         if (!w) return;
         const p = { ...w[d.side] }; const dir = Number(d.v);
-        if (p.type === "time") p.time = hhmm(clamp(Math.round((parseHHMM(p.time) + dir * 0.25) * 4) / 4, 0, d.side === "to" ? 24 : 23.75));
+        if (p.type === "time") {
+          // genau 15 Minuten weiter, auch von krummen Zeiten wie 04:48
+          const mins = clamp(Math.round(parseHHMM(p.time) * 60) + dir * 15, 0, d.side === "to" ? 1440 : 1439);
+          p.time = String(Math.floor(mins / 60)).padStart(2, "0") + ":" + String(mins % 60).padStart(2, "0");
+        }
         else p.offset = clamp((p.offset || 0) + dir * 5, -720, 720);
         return this._tryPoint(w, d.side, p);
       }
@@ -624,6 +644,52 @@ class SchaltzentralePanel extends HTMLElement {
         return this._changed();
       }
     }
+  }
+
+  // Uhrzeit als zwei Eingabefelder (Stunden, Minuten), Sonne als Versatz in Minuten
+  _valueBox(p, side) {
+    const what = side === "from" ? "Einschalten" : "Ausschalten";
+    if (p.type === "time") {
+      const [hh, mm] = String(p.time || "00:00").split(":");
+      return `<span class="val timebox" data-side="${side}">` +
+        `<input class="tp" data-tp="hh" data-side="${side}" value="${esc(hh)}" inputmode="numeric" maxlength="2" aria-label="Stunden ${what}">:` +
+        `<input class="tp" data-tp="mm" data-side="${side}" value="${esc(mm)}" inputmode="numeric" maxlength="2" aria-label="Minuten ${what}"></span>`;
+    }
+    const off = p.offset || 0;
+    return `<span class="val timebox" data-side="${side}"><span class="sunname">${p.type === "sunrise" ? "Aufgang" : "Untergang"}</span>` +
+      `<input class="tp off" data-tp="off" data-side="${side}" value="${off > 0 ? "+" + off : off}" inputmode="numeric" maxlength="4" aria-label="Minuten vor (−) oder nach (+) ${p.type === "sunrise" ? "Sonnenaufgang" : "Sonnenuntergang"}"><span class="small muted">min</span></span>`;
+  }
+
+  // Eingetippte Zeit übernehmen, sobald das Feldpaar verlassen wird
+  _commitTime(side) {
+    const w = this._group && this._group.windows[this._sel.win];
+    if (!w) return;
+    const box = this.shadowRoot.querySelector(`.timebox[data-side="${side}"]`);
+    if (!box) return;
+    const val = (tp) => box.querySelector(`[data-tp="${tp}"]`)?.value.trim();
+    const p = w[side];
+    let next;
+    if (p.type === "time") {
+      const h = Number(val("hh"));
+      const m = Number(val("mm") || 0);
+      const maxH = side === "to" ? 24 : 23;
+      if (!/^\d{1,2}$/.test(val("hh")) || !/^\d{0,2}$/.test(val("mm") || "") || h > maxH || m > 59 || (h === 24 && m > 0)) {
+        this._ui.warn = side === "to" ? "Bitte eine Uhrzeit von 00:00 bis 24:00 eingeben." : "Bitte eine Uhrzeit von 00:00 bis 23:59 eingeben.";
+        return this._render();
+      }
+      next = { ...p, time: String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0") };
+      if (next.time === p.time) return this._render();
+    } else {
+      const raw = (val("off") || "0").replace("−", "-");
+      if (!/^[+-]?\d{1,3}$/.test(raw) || Math.abs(Number(raw)) > 720) {
+        this._ui.warn = "Bitte den Versatz in Minuten eingeben, z. B. -15 oder +30 (höchstens 720).";
+        return this._render();
+      }
+      next = { ...p, offset: Number(raw) };
+      if (next.offset === (p.offset || 0)) return this._render();
+    }
+    this._ui.warn = null;
+    return this._tryPoint(w, side, next);
   }
 
   // Zeitpunkt nur übernehmen, wenn Einschalten dann nicht nach Ausschalten liegt
@@ -848,6 +914,12 @@ button.tday { height:32px; margin-right:6px; width:38px; padding:0; border-radiu
 button.tday:hover { border-color:#3a4150; }
 button.tday.on { border-color:var(--c); color:#fff; background:color-mix(in srgb, var(--c) 15%, transparent); }
 .block.selday { box-shadow:0 0 0 2px #111318, 0 0 0 4px #fff; }
+.timebox { display:inline-flex; align-items:center; justify-content:center; gap:2px; }
+.tp { width:44px; min-height:40px; padding:0; text-align:center; font-family:"Space Grotesk", Inter, sans-serif; font-size:19px; font-weight:600; color:#e8eaf0; background:transparent; border:1px solid transparent; border-radius:8px; cursor:text; }
+.tp:hover { border-color:#3a4150; background:#14171d; }
+.tp:focus { background:#14171d; border-color:#60a5fa; outline:none; }
+.tp.off { width:54px; font-size:17px; }
+.sunname { margin-right:2px; font-family:"Space Grotesk", Inter, sans-serif; font-size:15px; font-weight:600; }
 .note { padding:10px 12px; border-radius:8px; font-size:13px; background:#1d2129; border:1px solid #2f3541; color:#c3c9d4; }
 .note.warn { background:#3b1d1d; border-color:#7f1d1d; color:#fecaca; }
 .track { position:relative; flex:1 1 auto; height:28px; border-radius:8px; cursor:crosshair; touch-action:none; user-select:none;

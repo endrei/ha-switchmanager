@@ -1,7 +1,7 @@
 """Konstanten der Schaltzentrale."""
 
 DOMAIN = "schaltzentrale"
-VERSION = "0.1.1"
+VERSION = "0.1.2"
 
 STORAGE_KEY = DOMAIN
 STORAGE_VERSION = 1
