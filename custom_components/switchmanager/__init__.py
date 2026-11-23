@@ -1,4 +1,4 @@
-"""Schaltzentrale: Zeitpläne für Schalter, per Klick eingerichtet."""
+"""SwitchManager: weekly schedules for your switches, set up with a few clicks."""
 
 from __future__ import annotations
 
@@ -27,10 +27,10 @@ from .manager import Manager
 
 _LOGGER = logging.getLogger(__name__)
 
-type SchaltzentraleConfigEntry = ConfigEntry[Manager]
+type SwitchManagerConfigEntry = ConfigEntry[Manager]
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: SchaltzentraleConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: SwitchManagerConfigEntry) -> bool:
     data = hass.data.setdefault(DOMAIN, {})
 
     manager = Manager(hass, last=data.get("last"))
@@ -43,7 +43,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: SchaltzentraleConfigEntr
         await hass.http.async_register_static_paths(
             [StaticPathConfig(STATIC_URL, str(Path(__file__).parent / "static"), False)]
         )
-        frontend.add_extra_js_url(hass, f"{STATIC_URL}/schaltzentrale-card.js?v={VERSION}")
+        frontend.add_extra_js_url(hass, f"{STATIC_URL}/switchmanager-card.js?v={VERSION}")
         websocket.async_register(hass)
         data["static"] = True
 
@@ -69,20 +69,20 @@ async def _register_panel(hass: HomeAssistant) -> None:
         webcomponent_name=PANEL_COMPONENT,
         sidebar_title=PANEL_TITLE,
         sidebar_icon=PANEL_ICON,
-        module_url=f"{STATIC_URL}/schaltzentrale-panel.js?v={VERSION}",
+        module_url=f"{STATIC_URL}/switchmanager-panel.js?v={VERSION}",
         require_admin=True,
         config={},
     )
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: SchaltzentraleConfigEntry) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: SwitchManagerConfigEntry) -> bool:
     manager: Manager = entry.runtime_data
     manager.stop()
     data = hass.data.get(DOMAIN, {})
     data["last"] = manager.last
     if data.get("manager") is manager:
         data.pop("manager")
-    # Beim Neuladen nach einer Änderung bleibt das Panel offen
+    # Keep the panel open when reloading after a change
     if not data.pop("reloading", False):
         frontend.async_remove_panel(hass, PANEL_URL_PATH)
         data["panel"] = False
@@ -99,10 +99,10 @@ def expected_unique_ids(entry_id: str, config: dict) -> set[str]:
 
 
 def _remove_stale_entities(hass: HomeAssistant, entry: ConfigEntry, manager: Manager) -> None:
-    """Entitäten gelöschter Themen und Gruppen aus der Registry entfernen."""
+    """Remove entities of deleted themes and groups from the registry."""
     registry = er.async_get(hass)
     wanted = expected_unique_ids(entry.entry_id, manager.config)
     for reg_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
         if reg_entry.unique_id not in wanted:
-            _LOGGER.debug("Entferne verwaiste Entität %s", reg_entry.entity_id)
+            _LOGGER.debug("Removing orphaned entity %s", reg_entry.entity_id)
             registry.async_remove(reg_entry.entity_id)

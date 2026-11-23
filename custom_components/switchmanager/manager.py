@@ -1,4 +1,4 @@
-"""Herzstück: hält die Konfiguration, wertet die Pläne aus und schaltet."""
+"""Core of SwitchManager: holds the configuration, evaluates schedules and switches."""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ from homeassistant.util import dt as dt_util
 
 from . import schedule
 from .const import (
+    LEGACY_STORAGE_KEY,
     REASON_PAUSED,
     REASON_PLAN,
     REASON_SEASON,
@@ -32,28 +33,37 @@ SKIP_STATES = {"unavailable", "unknown"}
 
 
 class Manager:
-    """Verwaltet Themen, Gruppen und Wochenpläne."""
+    """Manages themes, groups and weekly schedules."""
 
     def __init__(self, hass: HomeAssistant, last: dict[str, bool] | None = None) -> None:
         self.hass = hass
         self._store: Store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
         self.config: dict = default_config()
-        # Letzte Soll-Zustände; bleiben beim Neuladen erhalten, damit ein
-        # Neuladen nicht alles neu schaltet.
+        # Last desired states. They survive a reload so that a reload does
+        # not switch everything again.
         self._initialized = last is not None
         self._last: dict[str, bool] = dict(last or {})
         self._status: dict = {}
         self._unsub_timer: CALLBACK_TYPE | None = None
         self._started = False
 
-    # ------------------------------------------------------------ Speicher
+    # ------------------------------------------------------------ storage
     async def async_load(self) -> None:
         stored = await self._store.async_load()
+        if not stored:
+            # Earlier versions were called "Schaltzentrale": take over their data
+            stored = await Store(self.hass, STORAGE_VERSION, LEGACY_STORAGE_KEY).async_load()
+            if stored:
+                _LOGGER.info("Imported configuration from Schaltzentrale")
+                try:
+                    await self._store.async_save(CONFIG_SCHEMA(stored))
+                except Exception:  # noqa: BLE001
+                    _LOGGER.exception("Could not import old configuration")
         if stored:
             try:
                 self.config = CONFIG_SCHEMA(stored)
             except Exception:  # noqa: BLE001
-                _LOGGER.exception("Gespeicherte Konfiguration ist ungültig, starte leer")
+                _LOGGER.exception("Stored configuration is invalid, starting empty")
                 self.config = default_config()
 
     async def async_save(self, config: dict) -> None:
@@ -68,10 +78,10 @@ class Manager:
         was_paused = self.config["paused"]
         await self.async_save(config)
         if was_paused and not self.config["paused"]:
-            # Nach der Pause auf den Planstand bringen
+            # After a pause, bring everything to the planned state
             self.evaluate(sync_all=True)
 
-    # ------------------------------------------------------------ Lauf
+    # ------------------------------------------------------------ running
     @callback
     def start(self) -> None:
         self._started = True
@@ -89,7 +99,7 @@ class Manager:
             self._unsub_timer()
             self._unsub_timer = None
 
-    def _sun(self, kind: str, day: date) -> datetime | None:
+    def sun(self, kind: str, day: date) -> datetime | None:
         event = SUN_EVENT_SUNRISE if kind == "sunrise" else SUN_EVENT_SUNSET
         return get_astral_event_date(self.hass, event, day)
 
@@ -103,7 +113,7 @@ class Manager:
             season_ok = schedule.in_season(theme.get("season"), today)
             themes[theme["id"]] = {"active": theme["active"], "in_season": season_ok}
             for group in theme["groups"]:
-                plan = schedule.evaluate(group, now, tz, self._sun)
+                plan = schedule.evaluate(group, now, tz, self.sun)
                 if paused:
                     reason = REASON_PAUSED
                 elif not theme["active"]:
@@ -121,10 +131,10 @@ class Manager:
                     if active and plan.next_change
                     else None,
                     "next_state": plan.next_state if active else None,
-                    "today": schedule.intervals_on_day(group, today, tz, self._sun),
+                    "today": schedule.intervals_on_day(group, today, tz, self.sun),
                 }
-        sunrise = self._sun("sunrise", today)
-        sunset = self._sun("sunset", today)
+        sunrise = self.sun("sunrise", today)
+        sunset = self.sun("sunset", today)
         return {
             "now": now.isoformat(),
             "paused": paused,
@@ -138,7 +148,7 @@ class Manager:
 
     @callback
     def evaluate(self, sync_all: bool = False) -> None:
-        """Soll-Zustände berechnen, bei Wechseln schalten, nächsten Termin planen."""
+        """Compute desired states, switch on changes, schedule the next run."""
         now = dt_util.now()
         status = self._compute(now)
         paused = status["paused"]
@@ -156,10 +166,10 @@ class Manager:
                     on = status["groups"][group["id"]]["on"]
                     previous = self._last.get(group["id"])
                     if previous is None and self._initialized:
-                        previous = False  # neue Gruppe: wie bisher aus behandeln
+                        previous = False  # new group: treat as previously off
                     if sync_all or (previous is not None and previous != on):
                         (to_on if on else to_off).update(group["entities"])
-            # Ein Schalter in mehreren Gruppen bleibt an, solange eine ihn will
+            # A switch in several groups stays on as long as one group wants it on
             to_off -= wanted_on
             self._switch(to_on, True)
             self._switch(to_off, False)
@@ -180,10 +190,10 @@ class Manager:
         candidates: list[datetime] = []
         for theme in self.config["themes"]:
             for group in theme["groups"]:
-                plan = schedule.evaluate(group, now, tz, self._sun)
+                plan = schedule.evaluate(group, now, tz, self.sun)
                 if plan.next_change:
                     candidates.append(plan.next_change)
-        # Spätestens nach Mitternacht neu rechnen (Saison, Sonnenzeiten)
+        # Recompute after midnight at the latest (season, sun times)
         tomorrow = now.astimezone(tz).date() + timedelta(days=1)
         candidates.append(dt_util.start_of_local_day(tomorrow) + timedelta(seconds=5))
         target = max(min(candidates), now + timedelta(seconds=1))
@@ -199,12 +209,12 @@ class Manager:
         for entity_id in sorted(entities):
             state = self.hass.states.get(entity_id)
             if state is None or state.state in SKIP_STATES:
-                _LOGGER.debug("%s nicht erreichbar, übersprungen", entity_id)
+                _LOGGER.debug("%s is unavailable, skipped", entity_id)
                 continue
             targets.append(entity_id)
         if not targets:
             return
-        _LOGGER.info("Schalte %s: %s", "ein" if on else "aus", ", ".join(targets))
+        _LOGGER.info("Turning %s: %s", "on" if on else "off", ", ".join(targets))
         self.hass.async_create_task(self._call(targets, on), eager_start=True)
 
     async def _call(self, targets: list[str], on: bool) -> None:
@@ -216,9 +226,9 @@ class Manager:
                 blocking=True,
             )
         except Exception:  # noqa: BLE001
-            _LOGGER.exception("Schalten fehlgeschlagen: %s", ", ".join(targets))
+            _LOGGER.exception("Switching failed: %s", ", ".join(targets))
 
-    # ------------------------------------------------------------ Lesen
+    # ------------------------------------------------------------ reading
     @property
     def status(self) -> dict:
         return self._status

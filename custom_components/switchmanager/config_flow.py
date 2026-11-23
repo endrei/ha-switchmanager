@@ -1,4 +1,4 @@
-"""Einrichtung per Klick: keine Fragen, alles Weitere im Panel."""
+"""Set up with one click: no questions, everything else happens in the panel."""
 
 from __future__ import annotations
 
@@ -9,10 +9,10 @@ from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from .const import DOMAIN
 
 
-class SchaltzentraleConfigFlow(ConfigFlow, domain=DOMAIN):
+class SwitchManagerConfigFlow(ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         if user_input is not None:
-            return self.async_create_entry(title="Schaltzentrale", data={})
+            return self.async_create_entry(title="SwitchManager", data={})
         return self.async_show_form(step_id="user")

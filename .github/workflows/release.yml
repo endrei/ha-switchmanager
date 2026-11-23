@@ -6,7 +6,7 @@ on:
   push:
     branches: [main]
     paths:
-      - custom_components/schaltzentrale/manifest.json
+      - custom_components/switchmanager/manifest.json
       - CHANGELOG.md
       - .github/workflows/release.yml
   workflow_dispatch:
@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Version lesen
         id: v
-        run: echo "version=$(jq -r .version custom_components/schaltzentrale/manifest.json)" >> "$GITHUB_OUTPUT"
+        run: echo "version=$(jq -r .version custom_components/switchmanager/manifest.json)" >> "$GITHUB_OUTPUT"
       - name: Release anlegen, falls neu
         env:
           GH_TOKEN: ${{ github.token }}

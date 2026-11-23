@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 import pytest
 import voluptuous as vol
 
-BASE = Path(__file__).parents[1] / "custom_components" / "schaltzentrale"
+BASE = Path(__file__).parents[1] / "custom_components" / "switchmanager"
 
 
 def _load(name):

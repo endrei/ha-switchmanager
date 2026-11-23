@@ -1,14 +1,31 @@
-/* Schaltzentrale – Dashboard-Karte „Heute geschaltet“.
- * Wird von der Integration automatisch geladen.
- *   type: custom:schaltzentrale-card
- *   title: Heute geschaltet      # optional
- *   theme: Weihnachten Außen     # optional, nur dieses Thema (Name oder ID)
+/* SwitchManager dashboard card "Today".
+ * Loaded automatically by the integration.
+ *   type: custom:switchmanager-card
+ *   title: Today                 # optional
+ *   theme: Christmas outdoor     # optional, only this theme (name or id)
  */
+
+const CARD_TEXT = {
+  de: { locale: "de-DE", title: "Heute geschaltet", unreachable: "SwitchManager nicht erreichbar: {err}", loading: "Lade …",
+    paused: "Pausiert", themeOff: "Thema aus", season: "Keine Saison", on: "AN", off: "AUS", onW: "An", offW: "Aus",
+    at: "um", tomorrowAt: "morgen um", on_day: "am", resting: "Plan ruht",
+    empty: "Noch keine Gruppen angelegt. Öffne SwitchManager in der Seitenleiste.", open: "Öffnen",
+    cardName: "SwitchManager: Heute", cardDesc: "Zeigt, wann deine Gruppen heute an sind." },
+  en: { locale: "en-GB", title: "Switched today", unreachable: "SwitchManager not reachable: {err}", loading: "Loading …",
+    paused: "Paused", themeOff: "Theme off", season: "Out of season", on: "ON", off: "OFF", onW: "On", offW: "Off",
+    at: "at", tomorrowAt: "tomorrow at", on_day: "on", resting: "Plan resting",
+    empty: "No groups yet. Open SwitchManager in the sidebar.", open: "Open",
+    cardName: "SwitchManager: Today", cardDesc: "Shows when your groups are on today." },
+};
+const cardLang = (hass) => {
+  const l = String(hass?.locale?.language || hass?.language || navigator.language || "en").toLowerCase();
+  return l.startsWith("de") ? "de" : "en";
+};
 
 const escC = (v) =>
   String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
-class SchaltzentraleCard extends HTMLElement {
+class SwitchManagerCard extends HTMLElement {
   setConfig(config) {
     this._config = config || {};
     if (!this.shadowRoot) this.attachShadow({ mode: "open" });
@@ -36,16 +53,17 @@ class SchaltzentraleCard extends HTMLElement {
   _subscribe() {
     if (!this._hass || !this.isConnected) return;
     this._unsub = this._hass.connection
-      .subscribeMessage((msg) => { this._data = msg; this._paint(); }, { type: "schaltzentrale/subscribe" })
+      .subscribeMessage((msg) => { this._data = msg; this._paint(); }, { type: "switchmanager/subscribe" })
       .catch((err) => { this._error = err.message || String(err); this._paint(); return null; });
   }
 
   _paint() {
     if (!this.shadowRoot) return;
-    const title = this._config?.title || "Heute geschaltet";
+    const T = CARD_TEXT[cardLang(this._hass)];
+    const title = this._config?.title || T.title;
     let body;
-    if (this._error) body = `<p class="muted">Schaltzentrale nicht erreichbar: ${escC(this._error)}</p>`;
-    else if (!this._data) body = `<p class="muted">Lade …</p>`;
+    if (this._error) body = `<p class="muted">${escC(T.unreachable.replace("{err}", this._error))}</p>`;
+    else if (!this._data) body = `<p class="muted">${escC(T.loading)}</p>`;
     else {
       const { config, status } = this._data;
       const filter = this._config?.theme;
@@ -58,18 +76,18 @@ class SchaltzentraleCard extends HTMLElement {
         const segs = (gs.today || []).map(([a, b]) =>
           `<span class="seg" style="left:${(a / 24) * 100}%;width:${((b - a) / 24) * 100}%"></span>`).join("");
         let state;
-        if (gs.reason === "paused") state = "Pausiert";
-        else if (gs.reason === "theme_off") state = "Thema aus";
-        else if (gs.reason === "season") state = "Keine Saison";
-        else state = gs.on ? "AN" : "AUS";
+        if (gs.reason === "paused") state = T.paused;
+        else if (gs.reason === "theme_off") state = T.themeOff;
+        else if (gs.reason === "season") state = T.season;
+        else state = gs.on ? T.on : T.off;
         let next = "";
         if (active && gs.next_change) {
           const d = new Date(gs.next_change);
-          const time = d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+          const time = d.toLocaleTimeString(T.locale, { hour: "2-digit", minute: "2-digit" });
           const sameDay = d.toDateString() === now.toDateString();
-          next = `${gs.next_state ? "An" : "Aus"} ${sameDay ? "um" : "morgen um"} ${time}`;
-          if (!sameDay && d - now > 36 * 3600 * 1000) next = `${gs.next_state ? "An" : "Aus"} am ${d.toLocaleDateString("de-DE", { weekday: "long" })}`;
-        } else if (!active) next = "Plan ruht";
+          next = `${gs.next_state ? T.onW : T.offW} ${sameDay ? T.at : T.tomorrowAt} ${time}`;
+          if (!sameDay && d - now > 36 * 3600 * 1000) next = `${gs.next_state ? T.onW : T.offW} ${T.on_day} ${d.toLocaleDateString(T.locale, { weekday: "long" })}`;
+        } else if (!active) next = T.resting;
         return `
         <div class="item ${active ? "" : "dim"}" style="--c:${escC(t.color)}">
           <div class="head"><span class="name"><span class="dot"></span>${escC(g.name)}<span class="theme">${escC(t.name)}</span></span><span class="state ${gs.on ? "on" : ""}">${state}</span></div>
@@ -77,13 +95,13 @@ class SchaltzentraleCard extends HTMLElement {
           <span class="muted small">${escC(next)}</span>
         </div>`;
       })).join("");
-      body = rows || `<p class="muted">Noch keine Gruppen angelegt. Öffne die Schaltzentrale in der Seitenleiste.</p>`;
+      body = rows || `<p class="muted">${escC(T.empty)}</p>`;
       body = `<div class="scale"><span>0</span><span>6</span><span>12</span><span>18</span><span>24</span></div>` + body;
     }
     this.shadowRoot.innerHTML = `<style>${CARD_CSS}</style>
       <ha-card>
         <div class="wrap">
-          <div class="top"><h2>${escC(title)}</h2><a href="/schaltzentrale" class="link">Öffnen</a></div>
+          <div class="top"><h2>${escC(title)}</h2><a href="/switchmanager" class="link">${escC(T.open)}</a></div>
           ${body}
         </div>
       </ha-card>`;
@@ -111,12 +129,12 @@ h2 { margin:0; font-size:18px; font-weight:600; }
 .now { position:absolute; top:0; bottom:0; width:2px; background:#f87171; }
 `;
 
-if (!customElements.get("schaltzentrale-card")) {
-  customElements.define("schaltzentrale-card", SchaltzentraleCard);
+if (!customElements.get("switchmanager-card")) {
+  customElements.define("switchmanager-card", SwitchManagerCard);
   window.customCards = window.customCards || [];
   window.customCards.push({
-    type: "schaltzentrale-card",
-    name: "Schaltzentrale: Heute",
-    description: "Zeigt, wann deine Gruppen heute an sind.",
+    type: "switchmanager-card",
+    name: CARD_TEXT[cardLang()].cardName,
+    description: CARD_TEXT[cardLang()].cardDesc,
   });
 }

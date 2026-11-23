@@ -1,79 +1,115 @@
-# Schaltzentrale
+# SwitchManager
 
-Zeitpläne für deine Schalter in Home Assistant, per Klick eingerichtet und ohne eine Zeile YAML.
-Gedacht für alles, was zu festen Zeiten an- und ausgehen soll, zum Beispiel die Weihnachtsbeleuchtung
-an Tasmota- und Shelly-Steckdosen.
+Weekly schedules for your switches in Home Assistant, set up with a few clicks and without a line of YAML.
+Made for everything that should turn on and off at fixed times, for example Christmas lights on
+Tasmota or Shelly plugs.
+
+The panel and the card speak English and German and follow your Home Assistant language.
 
 ![Panel](docs/panel.png)
 
-## So ist es aufgebaut
+## How it is organised
 
-| Ebene | Beispiel | Was du dort einstellst |
+| Level | Example | What you set there |
 |---|---|---|
-| **Thema** | Weihnachten Außen | Farbe, An/Aus, Saison (z. B. 29.11. bis 06.01.) |
-| **Gruppe** | Fenster, Hof & Krippe | Welche Schalter dazugehören |
-| **Zeitfenster** | Mo–Fr 04:55 bis Sonnenaufgang +15 min | Wochentage, Einschalt- und Ausschaltzeit |
+| **Theme** | Christmas outdoor | Colour, on/off, season (e.g. 29 Nov to 6 Jan) |
+| **Group** | Windows, Yard & crib | Which switches belong to it |
+| **Time window** | Mon–Fri 04:55 to sunrise +15 min | Weekdays, turn-on and turn-off time |
 
-* Zeiten gehen als feste **Uhrzeit** oder relativ zu **Sonnenaufgang/-untergang** (± Minuten).
-* Ein Zeitfenster darf über Mitternacht gehen (z. B. 22:00 bis 01:00).
-* Ist ein Thema **aus**, werden seine Schalter ausgeschaltet und seine Pläne ruhen.
-* Außerhalb der **Saison** schaltet ein Thema nichts.
-* **Alles pausieren** friert alles ein: Es wird nichts geschaltet. Beim Fortsetzen wird jeder Schalter auf den Stand laut Plan gebracht.
-* Geschaltet wird nur bei einem **Wechsel** laut Plan. Schaltest du zwischendurch etwas von Hand, bleibt das so bis zum nächsten Wechsel.
-* Nach einem Neustart von Home Assistant werden alle Schalter einmal auf den Planstand gebracht.
-* Steckt ein Schalter in mehreren Gruppen, bleibt er an, solange eine davon ihn an haben will.
-* Nicht erreichbare Geräte werden übersprungen.
+* Times are a fixed **clock time** or relative to **sunrise/sunset** (± minutes).
+* A time window may run past midnight (e.g. 22:00 to 01:00).
+* When a theme is **off**, its switches are turned off and its plans rest.
+* Outside its **season** a theme switches nothing.
+* **Pause all** freezes everything: nothing is switched. On resume every switch is set to what the plan says.
+* Switching happens only when the plan **changes**. If you switch something by hand in between, it stays that way until the next change.
+* After a Home Assistant restart all switches are set to the plan once.
+* If a switch is in several groups, it stays on as long as one of them wants it on.
+* Unavailable devices are skipped.
 
-Funktioniert mit allen Entitäten der Domänen `switch`, `light`, `input_boolean` und `fan`.
+Works with all entities of the domains `switch`, `light`, `input_boolean` and `fan`.
 
-## Installation über HACS
+## Conflict check
 
-1. HACS öffnen, oben rechts **⋮ → Benutzerdefinierte Repositories**.
-2. `https://github.com/endrei/ha-switchmanager` eintragen, Typ **Integration**, hinzufügen.
-3. **Schaltzentrale** suchen und herunterladen, dann Home Assistant neu starten.
-4. **Einstellungen → Geräte & Dienste → Integration hinzufügen → Schaltzentrale**.
-5. In der Seitenleiste erscheint **Schaltzentrale**. Dort legst du alles an.
+![Conflict check](docs/check.png)
 
-Manuell geht es auch: den Ordner `custom_components/schaltzentrale` nach `config/custom_components/` kopieren und neu starten.
+Your switches may still be part of older automations. SwitchManager reads all automations
+(including the scenes they activate), works out when they fire and compares that with your plan:
 
-## Bedienung im Panel
+| Level | Meaning |
+|---|---|
+| **Conflict** | The automation does the opposite of your plan at that time, e.g. turns the lights off at 20:30 while the plan wants them on. |
+| **Duplicate** | The automation does the same as your plan. Most likely an old automation you can disable now. |
+| **Warning** | It switches the device but the time cannot be predicted (state triggers, toggles, time patterns), or the device is unavailable. |
+| **Note** | A disabled automation still mentions the switch. No problem. |
 
-* **Thema anlegen**, dann über **Bearbeiten** Name, Farbe und Saison setzen.
-* **Gruppe anlegen**, über den Stift Schalter suchen und hinzufügen.
-* Im **Wochenplan** mit der Maus über einen Tag ziehen, um ein Zeitfenster anzulegen. An den Enden eines Balkens ziehen, um ihn zu verschieben. Ein Klick auf einen Balken öffnet die Feineinstellung (Uhrzeit oder Sonne, Wochentage, Mo–Fr / Sa–So / täglich).
-* Ein Klick auf einen Schalter-Chip schaltet das Gerät sofort von Hand um.
+You see the result as a traffic light in the theme header, on each group card, as small markers in the
+weekly plan and in detail in the **Conflict check** card below the plan. From there you can open the
+automation in the editor or disable it with one click.
 
-Alles wird automatisch gespeichert.
+## Installation via HACS
 
-## Entitäten
+1. Open HACS, top right **⋮ → Custom repositories**.
+2. Enter `https://github.com/endrei/ha-switchmanager`, type **Integration**, add.
+3. Search for **SwitchManager**, download it and restart Home Assistant.
+4. **Settings → Devices & services → Add integration → SwitchManager**.
+5. **SwitchManager** appears in the sidebar. You set up everything there.
 
-Die Integration legt ein Gerät **Schaltzentrale** an mit:
+Manual install: copy the folder `custom_components/switchmanager` to `config/custom_components/` and restart.
 
-* `switch.schaltzentrale_pause`: An = alle Pläne pausiert.
-* `switch.schaltzentrale_<thema>`: An/Aus je Thema (Attribute: Saison, in_saison).
-* `binary_sensor.schaltzentrale_<thema>_<gruppe>`: An, wenn die Gruppe laut Plan gerade an ist
-  (Attribute: grund, naechste_schaltung, naechster_zustand, schalter).
+### Coming from "Schaltzentrale" (0.1.x)
 
-Damit kannst du die Schaltzentrale auch aus Automationen oder per Sprache steuern.
+The project used to be called Schaltzentrale. When updating to 0.2.0:
 
-## Dashboard-Karte
+1. Update in HACS and restart Home Assistant.
+2. Delete the old **Schaltzentrale** integration entry and add **SwitchManager** (step 4 above).
+   Your themes, groups and plans are imported automatically.
+3. Delete the old folder `config/custom_components/schaltzentrale` if it is still there.
+4. Entity ids change from `schaltzentrale_*` to `switchmanager_*`, and the card type is now
+   `custom:switchmanager-card`. Adjust automations and dashboards that use them.
+5. Reload the browser (Ctrl+F5).
 
-![Karte](docs/karte.png)
+## Using the panel
 
-Die Karte wird automatisch mitgeladen. Im Dashboard **Karte hinzufügen → Manuell**:
+* **Add theme**, then set name, colour and season via **Edit**.
+* **Add group**, then search and add switches via the pencil.
+* In the **weekly plan**, drag across a day to add a time window. Drag the ends of a bar to move it.
+  Click a bar for the details (clock or sun, weekdays, Mon–Fri / Sat–Sun / daily).
+  Click a weekday to change just that day.
+* Click the hours or minutes of a time to type them; +/- move by 15 minutes.
+* Click a switch chip to toggle the device right away.
+
+Everything is saved automatically.
+
+## Entities
+
+The integration creates a device **SwitchManager** with:
+
+* `switch.switchmanager_pause`: on = all plans paused.
+* `switch.switchmanager_<theme>`: on/off per theme (attributes: `season`, `in_season`).
+* `binary_sensor.switchmanager_<group>`: on while the group is on according to its plan
+  (attributes: `reason`, `next_change`, `next_state`, `switches`).
+
+So you can also control SwitchManager from automations or by voice.
+
+## Dashboard card
+
+![Card](docs/card.png)
+
+The card is loaded automatically. In a dashboard choose **Add card → Manual**:
 
 ```yaml
-type: custom:schaltzentrale-card
-title: Heute geschaltet        # optional
-theme: Weihnachten Außen       # optional, nur dieses Thema
+type: custom:switchmanager-card
+title: Switched today          # optional
+theme: Christmas outdoor       # optional, only this theme
 ```
 
-## Entwicklung
+## Development
 
 ```bash
 pip install pytest-homeassistant-custom-component
 pytest
 ```
 
-`tests/test_schedule.py` prüft die Zeitlogik (Sonne, Mitternacht, Saison), `tests/test_integration.py`
-spielt Schaltzeiten in einem Test-Home-Assistant durch.
+`tests/test_schedule.py` checks the time logic (sun, midnight, season), `tests/test_conflicts.py`
+the automation parsing and `tests/test_integration.py` runs switching times and the conflict check
+in a test Home Assistant.

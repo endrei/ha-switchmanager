@@ -1,4 +1,4 @@
-"""Gemeinsame Basis für alle Entitäten der Schaltzentrale."""
+"""Common base for all SwitchManager entities."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from .const import DOMAIN, SIGNAL_UPDATE, VERSION
 from .manager import Manager
 
 
-class SchaltzentraleEntity(Entity):
+class SwitchManagerEntity(Entity):
     _attr_should_poll = False
     _attr_has_entity_name = True
 
@@ -18,8 +18,8 @@ class SchaltzentraleEntity(Entity):
         self.manager = manager
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry_id)},
-            name="Schaltzentrale",
-            manufacturer="Schaltzentrale",
+            name="SwitchManager",
+            manufacturer="SwitchManager",
             sw_version=VERSION,
             entry_type=DeviceEntryType.SERVICE,
         )

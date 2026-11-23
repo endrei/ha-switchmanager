@@ -1,4 +1,4 @@
-"""Datenmodell und Prüfung der gespeicherten Konfiguration."""
+"""Data model and validation of the stored configuration."""
 
 from __future__ import annotations
 
@@ -70,7 +70,7 @@ def _unique_ids(config: dict) -> dict:
     for theme in config["themes"]:
         for item in [theme, *theme["groups"]]:
             if item["id"] in seen:
-                raise vol.Invalid(f"Doppelte ID: {item['id']}")
+                raise vol.Invalid(f"Duplicate id: {item['id']}")
             seen.add(item["id"])
     return config
 
@@ -93,7 +93,7 @@ def default_config() -> dict:
 
 
 def structure_key(config: dict) -> tuple:
-    """Alles, was Entitäten erzeugt. Ändert es sich, wird neu geladen."""
+    """Everything that creates entities. If it changes, the entry is reloaded."""
     return tuple(
         (theme["id"], theme["name"], tuple((g["id"], g["name"]) for g in theme["groups"]))
         for theme in config["themes"]

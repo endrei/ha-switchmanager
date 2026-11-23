@@ -1,4 +1,4 @@
-"""Schalter: Pause für alles und An/Aus je Thema."""
+"""Switches: pause everything, and on/off per theme."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from homeassistant.components.switch import SwitchEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .entity import SchaltzentraleEntity
+from .entity import SwitchManagerEntity
 from .manager import Manager
 
 
@@ -19,8 +19,8 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities: AddE
     async_add_entities(entities)
 
 
-class PauseSwitch(SchaltzentraleEntity, SwitchEntity):
-    """An = alle Pläne angehalten, es wird nichts geschaltet."""
+class PauseSwitch(SwitchManagerEntity, SwitchEntity):
+    """On = all schedules paused, nothing is switched."""
 
     _attr_translation_key = "pause"
     _attr_icon = "mdi:pause-circle-outline"
@@ -40,8 +40,8 @@ class PauseSwitch(SchaltzentraleEntity, SwitchEntity):
         await self.manager.async_update(lambda c: c.update(paused=False))
 
 
-class ThemeSwitch(SchaltzentraleEntity, SwitchEntity):
-    """An/Aus eines Themas (z. B. Weihnachten Außen)."""
+class ThemeSwitch(SwitchManagerEntity, SwitchEntity):
+    """On/off of a theme (e.g. Christmas outdoor)."""
 
     _attr_icon = "mdi:string-lights"
 
@@ -64,7 +64,7 @@ class ThemeSwitch(SchaltzentraleEntity, SwitchEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         info = self.manager.status.get("themes", {}).get(self._theme_id, {})
         theme = self.manager.theme(self._theme_id) or {}
-        return {"in_saison": info.get("in_season"), "saison": theme.get("season")}
+        return {"in_season": info.get("in_season"), "season": theme.get("season")}
 
     async def _set(self, active: bool) -> None:
         def mutate(config: dict) -> None:

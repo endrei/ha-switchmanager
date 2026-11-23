@@ -2,8 +2,8 @@
   "config": {
     "step": {
       "user": {
-        "title": "Schaltzentrale",
-        "description": "Zeitpläne für deine Schalter. Nach dem Einrichten findest du die **Schaltzentrale** in der Seitenleiste."
+        "title": "SwitchManager",
+        "description": "Wochenpläne für deine Schalter. Nach dem Einrichten findest du den **SwitchManager** in der Seitenleiste."
       }
     },
     "abort": {

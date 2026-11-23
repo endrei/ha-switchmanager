@@ -1,4 +1,4 @@
-"""Binärsensor je Gruppe: An = laut Plan gerade eingeschaltet."""
+"""Binary sensor per group: on = the plan says on right now."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .entity import SchaltzentraleEntity
+from .entity import SwitchManagerEntity
 from .manager import Manager
 
 
@@ -21,7 +21,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities: AddE
     )
 
 
-class GroupPlanSensor(SchaltzentraleEntity, BinarySensorEntity):
+class GroupPlanSensor(SwitchManagerEntity, BinarySensorEntity):
     _attr_icon = "mdi:calendar-clock"
 
     def __init__(self, manager: Manager, entry_id: str, group_id: str, name: str) -> None:
@@ -47,8 +47,8 @@ class GroupPlanSensor(SchaltzentraleEntity, BinarySensorEntity):
         found = self.manager.group(self._group_id)
         info = self._info
         return {
-            "grund": info.get("reason"),
-            "naechste_schaltung": info.get("next_change"),
-            "naechster_zustand": "an" if info.get("next_state") else ("aus" if info.get("next_state") is False else None),
-            "schalter": found[1]["entities"] if found else [],
+            "reason": info.get("reason"),
+            "next_change": info.get("next_change"),
+            "next_state": "on" if info.get("next_state") else ("off" if info.get("next_state") is False else None),
+            "switches": found[1]["entities"] if found else [],
         }

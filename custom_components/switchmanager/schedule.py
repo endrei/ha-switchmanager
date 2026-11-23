@@ -1,10 +1,10 @@
-"""Reine Zeitplan-Logik ohne Home-Assistant-Abhängigkeit.
+"""Pure schedule logic without Home Assistant dependencies.
 
-Ein Zeitfenster besteht aus Wochentagen (0 = Montag) und zwei Zeitpunkten
-("from" und "to"). Ein Zeitpunkt ist entweder eine feste Uhrzeit oder
-Sonnenaufgang/-untergang mit Versatz in Minuten. Liegt das Ende vor dem
-Anfang und wird abends ein- und morgens ausgeschaltet, läuft das Fenster über
-Mitternacht in den nächsten Tag. Sonst ist das Fenster an dem Tag leer.
+A time window has weekdays (0 = Monday) and two points in time ("from" and
+"to"). A point is either a fixed time or sunrise/sunset with an offset in
+minutes. If the end lies before the start and the window turns on in the
+evening and off in the morning, it runs past midnight into the next day.
+Otherwise the window is empty on that day.
 """
 
 from __future__ import annotations
@@ -24,13 +24,13 @@ def parse_hhmm(value: str) -> tuple[int, int]:
 
 
 def parse_md(value: str) -> tuple[int, int]:
-    """'MM-DD' -> (Monat, Tag)."""
+    """'MM-DD' -> (month, day)."""
     month, day = value.split("-")
     return int(month), int(day)
 
 
 def resolve_point(point: dict, day: date, tz: tzinfo, sun: SunFn) -> datetime | None:
-    """Zeitpunkt eines Fensters an einem bestimmten Tag als datetime."""
+    """A window's point in time on a given day as datetime."""
     kind = point.get("type", "time")
     if kind == "time":
         hours, minutes = parse_hhmm(point.get("time", "00:00"))
@@ -38,21 +38,21 @@ def resolve_point(point: dict, day: date, tz: tzinfo, sun: SunFn) -> datetime | 
             return datetime.combine(day + timedelta(days=1), time(0, 0), tzinfo=tz)
         return datetime.combine(day, time(hours, minutes), tzinfo=tz)
     event = sun(kind, day)
-    if event is None:  # z. B. Polartag
+    if event is None:  # e.g. polar day
         return None
     return event.astimezone(tz) + timedelta(minutes=int(point.get("offset", 0)))
 
 
 def crosses_midnight(start: datetime, end: datetime) -> bool:
-    """Liegt das Ende vor dem Anfang, ist das nur als Nachtfenster gewollt,
-    wenn abends (ab 12 Uhr) eingeschaltet und morgens (vor 12 Uhr) ausgeschaltet wird."""
+    """An end before the start only means an overnight window when it turns
+    on in the evening (from 12:00) and off in the morning (before 12:00)."""
     return start.hour >= 12 and end.hour < 12
 
 
 def window_intervals(
     window: dict, first: date, last: date, tz: tzinfo, sun: SunFn
 ) -> list[tuple[datetime, datetime]]:
-    """Alle Ein-Intervalle eines Fensters, deren Starttag in [first, last] liegt."""
+    """All on-intervals of a window whose start day lies in [first, last]."""
     out: list[tuple[datetime, datetime]] = []
     days = set(window.get("days", []))
     day = first
@@ -64,8 +64,8 @@ def window_intervals(
                 if crosses_midnight(start, end):
                     end = resolve_point(window["to"], day + timedelta(days=1), tz, sun)
                 else:
-                    # Einschalten liegt nach Ausschalten (z. B. Aufgang 07:48
-                    # bis 07:30): an diesem Tag gibt es nichts zu schalten
+                    # On is after off (e.g. sunrise 07:48 to 07:30):
+                    # nothing to switch on that day
                     end = None
             if start is not None and end is not None and end > start:
                 out.append((start, end))
@@ -104,7 +104,7 @@ class PlanState:
 
 
 def evaluate(group: dict, now: datetime, tz: tzinfo, sun: SunFn) -> PlanState:
-    """Soll-Zustand einer Gruppe laut Wochenplan (ohne Thema/Saison/Pause)."""
+    """Desired state of a group by its weekly plan (ignoring theme/season/pause)."""
     for start, end in group_intervals(group, now, tz, sun):
         if start <= now < end:
             return PlanState(True, end, False)
@@ -116,7 +116,7 @@ def evaluate(group: dict, now: datetime, tz: tzinfo, sun: SunFn) -> PlanState:
 def intervals_on_day(
     group: dict, day: date, tz: tzinfo, sun: SunFn
 ) -> list[tuple[float, float]]:
-    """Ein-Zeiten eines Tages in Stunden (0-24), z. B. für die Tageskarte."""
+    """On-times of one day in hours (0-24), e.g. for the today card."""
     day_start = datetime.combine(day, time(0, 0), tzinfo=tz)
     day_end = day_start + timedelta(days=1)
     probe = day_start + timedelta(hours=12)

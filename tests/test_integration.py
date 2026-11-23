@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
 
-import custom_components.schaltzentrale  # noqa: E402,F401
+import custom_components.switchmanager  # noqa: E402,F401
 
 TZ = ZoneInfo("Europe/Berlin")
 START = datetime(2026, 11, 23, 14, 0, tzinfo=TZ)  # Montag
@@ -42,11 +42,11 @@ async def setup(hass: HomeAssistant, freezer, hass_ws_client):
     # Frontend gibt es im Test nicht; als geladen markieren
     for dep in ("frontend", "panel_custom"):
         hass.config.components.add(dep)
-    entry = MockConfigEntry(domain="schaltzentrale", title="Schaltzentrale")
+    entry = MockConfigEntry(domain="switchmanager", title="SwitchManager")
     entry.add_to_hass(hass)
-    with patch("custom_components.schaltzentrale.panel_custom.async_register_panel") as reg, \
-         patch("custom_components.schaltzentrale.frontend.add_extra_js_url"), \
-         patch("custom_components.schaltzentrale.frontend.async_remove_panel"), \
+    with patch("custom_components.switchmanager.panel_custom.async_register_panel") as reg, \
+         patch("custom_components.switchmanager.frontend.add_extra_js_url"), \
+         patch("custom_components.switchmanager.frontend.async_remove_panel"), \
          patch.object(hass.http, "async_register_static_paths", AsyncMock()):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
@@ -55,7 +55,7 @@ async def setup(hass: HomeAssistant, freezer, hass_ws_client):
 
 
 async def _save(client, config):
-    await client.send_json_auto_id({"type": "schaltzentrale/save", "config": config})
+    await client.send_json_auto_id({"type": "switchmanager/save", "config": config})
     res = await client.receive_json()
     assert res["success"], res
     return res["result"]
@@ -69,7 +69,7 @@ async def _tick(hass, freezer, when):
 
 async def test_get_empty(hass, setup):
     _entry, client = setup
-    await client.send_json_auto_id({"type": "schaltzentrale/get"})
+    await client.send_json_auto_id({"type": "switchmanager/get"})
     res = await client.receive_json()
     assert res["success"] and res["result"]["config"]["themes"] == []
 
@@ -81,12 +81,12 @@ async def test_schedule_switches_on_and_off(hass, setup, freezer):
     assert result["status"]["groups"]["fenster"]["on"] is False
     assert hass.states.get("input_boolean.lampe").state == "off"
     # Struktur geändert -> Neuladen erzeugt Entitäten
-    assert hass.states.get("switch.schaltzentrale_weihnachten_aussen") is not None
-    assert hass.states.get("binary_sensor.schaltzentrale_weihnachten_aussen_fenster").state == "off"
+    assert hass.states.get("switch.switchmanager_weihnachten_aussen") is not None
+    assert hass.states.get("binary_sensor.switchmanager_weihnachten_aussen_fenster").state == "off"
 
     await _tick(hass, freezer, START.replace(hour=15, second=1))
     assert hass.states.get("input_boolean.lampe").state == "on"
-    assert hass.states.get("binary_sensor.schaltzentrale_weihnachten_aussen_fenster").state == "on"
+    assert hass.states.get("binary_sensor.switchmanager_weihnachten_aussen_fenster").state == "on"
 
     await _tick(hass, freezer, START.replace(hour=16, second=1))
     assert hass.states.get("input_boolean.lampe").state == "off"
@@ -99,20 +99,20 @@ async def test_theme_switch_off_turns_devices_off(hass, setup, freezer):
     await _tick(hass, freezer, START.replace(hour=15, minute=10))
     assert hass.states.get("input_boolean.lampe").state == "on"
 
-    await hass.services.async_call("switch", "turn_off", {"entity_id": "switch.schaltzentrale_weihnachten_aussen"}, blocking=True)
+    await hass.services.async_call("switch", "turn_off", {"entity_id": "switch.switchmanager_weihnachten_aussen"}, blocking=True)
     await hass.async_block_till_done()
     assert hass.states.get("input_boolean.lampe").state == "off"
-    assert hass.states.get("binary_sensor.schaltzentrale_weihnachten_aussen_fenster").attributes["grund"] == "theme_off"
+    assert hass.states.get("binary_sensor.switchmanager_weihnachten_aussen_fenster").attributes["reason"] == "theme_off"
 
 
 async def test_pause_freezes_and_resume_syncs(hass, setup, freezer):
     _entry, client = setup
     await _save(client, cfg(WIN))
     await hass.async_block_till_done()
-    await hass.services.async_call("switch", "turn_on", {"entity_id": "switch.schaltzentrale_pause"}, blocking=True)
+    await hass.services.async_call("switch", "turn_on", {"entity_id": "switch.switchmanager_pause"}, blocking=True)
     await _tick(hass, freezer, START.replace(hour=15, minute=5))
     assert hass.states.get("input_boolean.lampe").state == "off"  # pausiert: nichts passiert
-    await hass.services.async_call("switch", "turn_off", {"entity_id": "switch.schaltzentrale_pause"}, blocking=True)
+    await hass.services.async_call("switch", "turn_off", {"entity_id": "switch.switchmanager_pause"}, blocking=True)
     await hass.async_block_till_done()
     assert hass.states.get("input_boolean.lampe").state == "on"  # nach Pause auf Planstand
 
@@ -128,7 +128,7 @@ async def test_out_of_season_does_nothing(hass, setup, freezer):
 async def test_invalid_config_rejected(hass, setup):
     _entry, client = setup
     bad = cfg([{"days": [0], "from": {"type": "time", "time": "99:00"}, "to": {"type": "time", "time": "10:00"}}])
-    await client.send_json_auto_id({"type": "schaltzentrale/save", "config": bad})
+    await client.send_json_auto_id({"type": "switchmanager/save", "config": bad})
     res = await client.receive_json()
     assert not res["success"] and res["error"]["code"] == "invalid_format"
 
@@ -141,4 +141,55 @@ async def test_removed_group_entity_cleaned_up(hass, setup):
     empty["themes"][0]["groups"] = []
     await _save(client, empty)
     await hass.async_block_till_done()
-    assert hass.states.get("binary_sensor.schaltzentrale_weihnachten_aussen_fenster") is None
+    assert hass.states.get("binary_sensor.switchmanager_weihnachten_aussen_fenster") is None
+
+
+async def test_imports_old_schaltzentrale_config(hass, hass_storage, freezer, hass_ws_client):
+    hass_storage["schaltzentrale"] = {"version": 1, "minor_version": 1, "key": "schaltzentrale", "data": cfg(WIN)}
+    await hass.config.async_set_time_zone("Europe/Berlin")
+    assert await async_setup_component(hass, "http", {})
+    client = await hass_ws_client(hass)
+    for dep in ("frontend", "panel_custom"):
+        hass.config.components.add(dep)
+    entry = MockConfigEntry(domain="switchmanager", title="SwitchManager")
+    entry.add_to_hass(hass)
+    with patch("custom_components.switchmanager.panel_custom.async_register_panel"), \
+         patch("custom_components.switchmanager.frontend.add_extra_js_url"), \
+         patch.object(hass.http, "async_register_static_paths", AsyncMock()):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+    await client.send_json_auto_id({"type": "switchmanager/get"})
+    res = await client.receive_json()
+    assert res["result"]["config"]["themes"][0]["name"] == "Weihnachten Außen"
+
+
+async def test_conflict_check_finds_other_automations(hass, setup):
+    _entry, client = setup
+    window = [{"days": [0, 1, 2, 3, 4, 5, 6], "from": {"type": "time", "time": "15:00"}, "to": {"type": "time", "time": "22:00"}}]
+    await _save(client, cfg(window))
+    await hass.async_block_till_done()
+    assert await async_setup_component(hass, "scene", {"scene": [
+        {"name": "Lampe an", "entities": {"input_boolean.lampe": "on"}}]})
+    assert await async_setup_component(hass, "automation", {"automation": [
+        {"id": "a1", "alias": "Lampe aus um 18", "triggers": [{"trigger": "time", "at": "18:00:00"}],
+         "actions": [{"action": "input_boolean.turn_off", "target": {"entity_id": "input_boolean.lampe"}}]},
+        {"id": "a2", "alias": "Alte Weihnacht an", "triggers": [{"trigger": "time", "at": "15:00:00"}],
+         "actions": [{"action": "scene.turn_on", "target": {"entity_id": "scene.lampe_an"}}]},
+        {"id": "a3", "alias": "Bewegung", "triggers": [{"trigger": "state", "entity_id": "input_boolean.weg"}],
+         "actions": [{"action": "homeassistant.toggle", "entity_id": "input_boolean.lampe"}]},
+        {"id": "a4", "alias": "Unbeteiligt", "triggers": [{"trigger": "time", "at": "10:00:00"}],
+         "actions": [{"action": "input_boolean.turn_on", "target": {"entity_id": "input_boolean.anderes"}}]},
+    ]})
+    await hass.async_block_till_done()
+    await client.send_json_auto_id({"type": "switchmanager/check"})
+    res = await client.receive_json()
+    assert res["success"], res
+    findings = res["result"]["groups"]["fenster"]
+    codes = {(f["automation"]["name"] if f["automation"] else None, f["code"]) for f in findings}
+    assert ("Lampe aus um 18", "turns_off_against_plan") in codes
+    assert ("Alte Weihnacht an", "duplicate") in codes
+    assert ("Bewegung", "toggle") in codes
+    assert (None, "unavailable") in codes  # input_boolean.weg does not exist
+    assert not any(name == "Unbeteiligt" for name, _ in codes)
+    conflict = next(f for f in findings if f["code"] == "turns_off_against_plan")
+    assert conflict["level"] == "conflict" and conflict["hour"] == 18 and conflict["automation"]["edit_id"] == "a1"
