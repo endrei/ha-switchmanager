@@ -1,7 +1,7 @@
 """Ende-zu-Ende-Tests mit einem echten (Test-)Home-Assistant."""
 
 from datetime import datetime, timedelta
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -46,7 +46,8 @@ async def setup(hass: HomeAssistant, freezer, hass_ws_client):
     entry.add_to_hass(hass)
     with patch("custom_components.schaltzentrale.panel_custom.async_register_panel") as reg, \
          patch("custom_components.schaltzentrale.frontend.add_extra_js_url"), \
-         patch("custom_components.schaltzentrale.frontend.async_remove_panel"):
+         patch("custom_components.schaltzentrale.frontend.async_remove_panel"), \
+         patch.object(hass.http, "async_register_static_paths", AsyncMock()):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
         assert reg.called
