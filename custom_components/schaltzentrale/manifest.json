@@ -1,0 +1,14 @@
+{
+  "domain": "schaltzentrale",
+  "name": "Schaltzentrale",
+  "codeowners": ["@endrei"],
+  "config_flow": true,
+  "dependencies": ["http", "frontend", "panel_custom", "websocket_api"],
+  "documentation": "https://github.com/endrei/ha-switchmanager",
+  "integration_type": "service",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/endrei/ha-switchmanager/issues",
+  "requirements": [],
+  "single_config_entry": true,
+  "version": "0.1.0"
+}

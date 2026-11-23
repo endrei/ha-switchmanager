@@ -1,0 +1,18 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Schaltzentrale",
+        "description": "Zeitpläne für deine Schalter. Nach dem Einrichten findest du die **Schaltzentrale** in der Seitenleiste."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Ist bereits eingerichtet."
+    }
+  },
+  "entity": {
+    "switch": {
+      "pause": { "name": "Pause" }
+    }
+  }
+}

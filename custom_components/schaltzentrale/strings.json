@@ -1,0 +1,18 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Schaltzentrale",
+        "description": "Schedules for your switches. After setup, open **Schaltzentrale** in the sidebar."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Already set up."
+    }
+  },
+  "entity": {
+    "switch": {
+      "pause": { "name": "Pause" }
+    }
+  }
+}
