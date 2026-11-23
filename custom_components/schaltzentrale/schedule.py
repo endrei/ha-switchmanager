@@ -3,7 +3,8 @@
 Ein Zeitfenster besteht aus Wochentagen (0 = Montag) und zwei Zeitpunkten
 ("from" und "to"). Ein Zeitpunkt ist entweder eine feste Uhrzeit oder
 Sonnenaufgang/-untergang mit Versatz in Minuten. Liegt das Ende vor dem
-Anfang, läuft das Fenster über Mitternacht in den nächsten Tag.
+Anfang und wird abends ein- und morgens ausgeschaltet, läuft das Fenster über
+Mitternacht in den nächsten Tag. Sonst ist das Fenster an dem Tag leer.
 """
 
 from __future__ import annotations
@@ -42,6 +43,12 @@ def resolve_point(point: dict, day: date, tz: tzinfo, sun: SunFn) -> datetime | 
     return event.astimezone(tz) + timedelta(minutes=int(point.get("offset", 0)))
 
 
+def crosses_midnight(start: datetime, end: datetime) -> bool:
+    """Liegt das Ende vor dem Anfang, ist das nur als Nachtfenster gewollt,
+    wenn abends (ab 12 Uhr) eingeschaltet und morgens (vor 12 Uhr) ausgeschaltet wird."""
+    return start.hour >= 12 and end.hour < 12
+
+
 def window_intervals(
     window: dict, first: date, last: date, tz: tzinfo, sun: SunFn
 ) -> list[tuple[datetime, datetime]]:
@@ -54,7 +61,12 @@ def window_intervals(
             start = resolve_point(window["from"], day, tz, sun)
             end = resolve_point(window["to"], day, tz, sun)
             if start is not None and end is not None and end <= start:
-                end = resolve_point(window["to"], day + timedelta(days=1), tz, sun)
+                if crosses_midnight(start, end):
+                    end = resolve_point(window["to"], day + timedelta(days=1), tz, sun)
+                else:
+                    # Einschalten liegt nach Ausschalten (z. B. Aufgang 07:48
+                    # bis 07:30): an diesem Tag gibt es nichts zu schalten
+                    end = None
             if start is not None and end is not None and end > start:
                 out.append((start, end))
         day += timedelta(days=1)

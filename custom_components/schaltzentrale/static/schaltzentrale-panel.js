@@ -53,7 +53,7 @@ class SchaltzentralePanel extends HTMLElement {
     this.attachShadow({ mode: "open" });
     this._cfg = null;
     this._status = null;
-    this._sel = { theme: null, group: null, win: 0 };
+    this._sel = { theme: null, group: null, win: 0, day: null };
     this._ui = { editTheme: false, editGroup: null, picker: null, confirm: null, saved: "" };
     this._drag = null;
     this._bound = false;
@@ -160,6 +160,15 @@ class SchaltzentralePanel extends HTMLElement {
     if (p.type === "time") return parseHHMM(p.time);
     return (p.type === "sunrise" ? this._sun.sunrise : this._sun.sunset) + (p.offset || 0) / 60;
   }
+  // "ok" | "overnight" (abends an, morgens aus) | "invalid" (an liegt nach aus)
+  _check(w) {
+    const a = this._hours(w.from);
+    const b = this._hours(w.to);
+    if (b > a) return "ok";
+    if (a >= 12 && b < 12) return "overnight";
+    return "invalid";
+  }
+
   _label(p) {
     if (p.type === "time") return p.time;
     return (p.type === "sunrise" ? "Aufgang" : "Untergang") + offLabel(p.offset);
@@ -376,16 +385,18 @@ class SchaltzentralePanel extends HTMLElement {
         const sel = wi === this._sel.win;
         const label = `${this._label(w.from)} – ${this._label(w.to)}`;
         const aria = `${DAYS_LONG[di]}: ${label}`;
-        const block = (from, to, l, r) =>
-          `<button class="block ${sel ? "sel" : ""}" data-a="pick-win" data-w="${wi}" data-day="${di}" aria-label="${esc(aria)}" style="left:${pct(from)};width:${pct(Math.max(0.1, to - from))}">${
+        const block = (from, to, l, r, startDay) =>
+          `<button class="block ${sel ? "sel" : ""} ${sel && this._sel.day === startDay ? "selday" : ""}" data-a="pick-win" data-w="${wi}" data-day="${startDay}" aria-label="${esc(aria)}" style="left:${pct(from)};width:${pct(Math.max(0.1, to - from))}">${
             l ? `<span class="h h-l" data-w="${wi}" data-side="from"></span>` : ""}<span class="bl">${to - from > 3 ? esc(label) : ""}</span>${
             r ? `<span class="h h-r" data-w="${wi}" data-side="to"></span>` : ""}</button>`;
-        if (b > a) {
-          if (w.days.includes(di)) blocks.push(block(a, b, true, true));
-        } else {
+        const check = this._check(w);
+        if (check === "ok") {
+          if (w.days.includes(di)) blocks.push(block(a, b, true, true, di));
+        } else if (check === "overnight") {
           // über Mitternacht: Abend am Tag selbst, Rest am Folgetag
-          if (w.days.includes(di)) blocks.push(block(a, 24, true, false));
-          if (w.days.includes((di + 6) % 7)) blocks.push(block(0, b, false, true));
+          if (w.days.includes(di)) blocks.push(block(a, 24, true, false, di));
+          const prev = (di + 6) % 7;
+          if (w.days.includes(prev)) blocks.push(block(0, b, false, true, prev));
         }
       });
       const today = (new Date().getDay() + 6) % 7 === di;
@@ -393,7 +404,7 @@ class SchaltzentralePanel extends HTMLElement {
       const nowH = now.getHours() + now.getMinutes() / 60;
       return `
       <div class="trow">
-        <span class="tday ${today ? "today" : ""}">${day}</span>
+        <button class="tday ${today ? "today" : ""} ${this._sel.day === di ? "on" : ""}" data-a="pick-day" data-v="${di}" title="${DAYS_LONG[di]} einzeln anpassen">${day}</button>
         <div class="track" data-day="${di}">
           <span class="sunline" style="left:${pct(this._sun.sunrise)}"></span>
           <span class="sunline" style="left:${pct(this._sun.sunset)}"></span>
@@ -414,8 +425,21 @@ class SchaltzentralePanel extends HTMLElement {
           <span class="val">${esc(this._label(w[side]))}</span>
           <button class="step" data-a="step" data-side="${side}" data-v="1" aria-label="Später">+</button>
         </div>`;
+      const dayNames = w.days.length === 7 ? "täglich" : w.days.join(",") === "0,1,2,3,4" ? "Mo–Fr" : w.days.join(",") === "5,6" ? "Sa–So" : w.days.map((x) => DAYS[x]).join(", ") || "keinen Tag";
+      const day = this._sel.day;
+      const canSplit = day !== null && day !== undefined && w.days.length > 1 && w.days.includes(day);
+      const check = this._check(w);
+      let note = "";
+      if (this._ui.warn) note = `<div class="note warn" role="alert">${esc(this._ui.warn)}</div>`;
+      else if (check === "invalid") note = `<div class="note warn" role="alert">Dieses Zeitfenster schaltet heute nicht: Einschalten (${esc(this._label(w.from))}, ${hhmm(this._hours(w.from))}) liegt nach Ausschalten (${esc(this._label(w.to))}, ${hhmm(this._hours(w.to))}). Stell Ausschalten später oder Einschalten früher.</div>`;
+      else if (check === "overnight") note = `<div class="note">Läuft über Mitternacht: aus am Folgetag um ${hhmm(this._hours(w.to))}.</div>`;
       editor = `
       <div class="editor grid3">
+        <div class="row between wrap gap10 span3">
+          <span class="small">Dieses Zeitfenster gilt für <strong>${esc(dayNames)}</strong>.${canSplit ? ` Änderungen wirken auf alle diese Tage.` : ""}</span>
+          ${canSplit ? `<button class="btn small-btn" data-a="split" data-v="${day}">Nur ${DAYS_LONG[day]} anders einstellen</button>` : ""}
+        </div>
+        ${note ? `<div class="span3">${note}</div>` : ""}
         <div class="field"><span class="eyebrow">Einschalten</span><div class="row wrap gap6">${types("from")}</div>${stepper("from")}</div>
         <div class="field"><span class="eyebrow">Ausschalten</span><div class="row wrap gap6">${types("to")}</div>${stepper("to")}</div>
         <div class="field"><span class="eyebrow">Wochentage</span>
@@ -493,6 +517,7 @@ class SchaltzentralePanel extends HTMLElement {
     const g = this._group;
     const w = g && g.windows[this._sel.win];
     if (a !== "del-theme" && a !== "del-group") this._ui.confirm = null;
+    this._ui.warn = null;
     switch (a) {
       case "pause": cfg.paused = !cfg.paused; return this._changed();
       case "pick-theme":
@@ -550,7 +575,25 @@ class SchaltzentralePanel extends HTMLElement {
         this._hass.callService("homeassistant", "toggle", { entity_id: d.e });
         return;
       }
-      case "pick-win": this._sel.win = Number(d.w); return this._render();
+      case "pick-win": this._sel.win = Number(d.w); this._sel.day = Number(d.day); return this._render();
+      case "pick-day": {
+        const v = Number(d.v);
+        this._sel.day = this._sel.day === v ? null : v;
+        // ersten Balken dieses Tages auswählen
+        const idx = g ? g.windows.findIndex((x) => x.days.includes(v)) : -1;
+        if (this._sel.day !== null && idx >= 0) this._sel.win = idx;
+        return this._render();
+      }
+      case "split": {
+        if (!w) return;
+        const v = Number(d.v);
+        const copy = JSON.parse(JSON.stringify(w));
+        w.days = w.days.filter((x) => x !== v);
+        copy.days = [v];
+        g.windows.splice(this._sel.win + 1, 0, copy);
+        this._sel.win = this._sel.win + 1;
+        return this._changed();
+      }
       case "add-win": {
         g.windows.push({ days: ALL_DAYS.slice(), from: { type: "sunset", offset: 0, time: "00:00" }, to: { type: "time", time: "22:00", offset: 0 } });
         this._sel.win = g.windows.length - 1; return this._changed();
@@ -559,15 +602,15 @@ class SchaltzentralePanel extends HTMLElement {
       case "set-type": {
         if (!w || w[d.side].type === d.v) return;
         const h = this._hours(w[d.side]);
-        w[d.side] = d.v === "time" ? { type: "time", time: hhmm(Math.round(h * 4) / 4), offset: 0 } : { type: d.v, offset: 0, time: "00:00" };
-        return this._changed();
+        const next = d.v === "time" ? { type: "time", time: hhmm(Math.round(h * 4) / 4), offset: 0 } : { type: d.v, offset: 0, time: "00:00" };
+        return this._tryPoint(w, d.side, next);
       }
       case "step": {
         if (!w) return;
-        const p = w[d.side]; const dir = Number(d.v);
+        const p = { ...w[d.side] }; const dir = Number(d.v);
         if (p.type === "time") p.time = hhmm(clamp(Math.round((parseHHMM(p.time) + dir * 0.25) * 4) / 4, 0, d.side === "to" ? 24 : 23.75));
         else p.offset = clamp((p.offset || 0) + dir * 5, -720, 720);
-        return this._changed();
+        return this._tryPoint(w, d.side, p);
       }
       case "day": {
         if (!w) return;
@@ -581,6 +624,21 @@ class SchaltzentralePanel extends HTMLElement {
         return this._changed();
       }
     }
+  }
+
+  // Zeitpunkt nur übernehmen, wenn Einschalten dann nicht nach Ausschalten liegt
+  _tryPoint(w, side, point) {
+    const test = { ...w, [side]: point };
+    if (this._check(test) === "invalid" && this._check(w) !== "invalid") {
+      const a = this._hours(test.from);
+      const b = this._hours(test.to);
+      this._ui.warn = side === "from"
+        ? `Geht so nicht: Einschalten wäre ${this._label(test.from)} (${hhmm(a)}) und damit nach Ausschalten um ${hhmm(b)}. Stell zuerst Ausschalten später.`
+        : `Geht so nicht: Ausschalten wäre ${this._label(test.to)} (${hhmm(b)}) und damit vor Einschalten um ${hhmm(a)}. Stell zuerst Einschalten früher.`;
+      return this._render();
+    }
+    w[side] = point;
+    return this._changed();
   }
 
   _field(el) {
@@ -675,7 +733,7 @@ class SchaltzentralePanel extends HTMLElement {
     }
     if (d.h === null) return this._render();
     const w = g.windows[d.wi];
-    const p = w[d.side];
+    const p = { ...w[d.side] };
     if (p.type === "time") p.time = hhmm(d.side === "from" ? Math.min(d.h, 23.75) : d.h);
     else {
       const base = p.type === "sunrise" ? this._sun.sunrise : this._sun.sunset;
@@ -683,7 +741,8 @@ class SchaltzentralePanel extends HTMLElement {
     }
     this._suppressClick = true;
     setTimeout(() => { this._suppressClick = false; }, 0);
-    this._changed();
+    this._ui.warn = null;
+    this._tryPoint(w, d.side, p);
   }
 }
 
@@ -785,6 +844,12 @@ input.short { width:90px; }
 .trow { display:flex; align-items:center; height:40px; }
 .tday { width:44px; flex:0 0 auto; font-size:12px; font-weight:600; color:#a3abba; }
 .tday.today { color:#e8eaf0; }
+button.tday { height:32px; margin-right:6px; width:38px; padding:0; border-radius:8px; border:1px solid transparent; background:none; text-align:center; }
+button.tday:hover { border-color:#3a4150; }
+button.tday.on { border-color:var(--c); color:#fff; background:color-mix(in srgb, var(--c) 15%, transparent); }
+.block.selday { box-shadow:0 0 0 2px #111318, 0 0 0 4px #fff; }
+.note { padding:10px 12px; border-radius:8px; font-size:13px; background:#1d2129; border:1px solid #2f3541; color:#c3c9d4; }
+.note.warn { background:#3b1d1d; border-color:#7f1d1d; color:#fecaca; }
 .track { position:relative; flex:1 1 auto; height:28px; border-radius:8px; cursor:crosshair; touch-action:none; user-select:none;
   background:repeating-linear-gradient(90deg, #20242d 0, #20242d calc(12.5% - 1px), #2a2f3a calc(12.5% - 1px), #2a2f3a 12.5%); }
 .sunline { position:absolute; top:0; bottom:0; width:1px; background:rgba(251,191,36,.4); pointer-events:none; }

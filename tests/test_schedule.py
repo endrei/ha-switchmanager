@@ -142,3 +142,16 @@ def test_structure_key_ignores_schedule_changes():
     assert models.structure_key(cfg1) == models.structure_key(cfg2)
     base["themes"][0]["name"] = "B"
     assert models.structure_key(models.CONFIG_SCHEMA(base)) != models.structure_key(cfg1)
+
+
+def test_start_after_end_same_morning_is_empty_not_24h():
+    # Aufgang (07:48) bis 07:30: kein Fenster, statt bis zum nächsten Tag an
+    group = {"windows": [{"days": [0], "from": {"type": "sunrise"}, "to": t("07:30")}]}
+    assert not schedule.evaluate(group, at(*MONDAY, 9), TZ, sun).on
+    assert schedule.intervals_on_day(group, date(*MONDAY), TZ, sun) == []
+    assert schedule.intervals_on_day(group, date(2026, 11, 24), TZ, sun) == []
+
+
+def test_start_after_end_in_evening_is_empty():
+    group = {"windows": [{"days": [0], "from": t("21:00"), "to": t("20:00")}]}
+    assert not schedule.evaluate(group, at(*MONDAY, 22), TZ, sun).on
