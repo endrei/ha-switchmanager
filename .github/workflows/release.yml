@@ -1,0 +1,35 @@
+name: Release
+
+# Legt automatisch ein GitHub-Release an, sobald auf main eine neue
+# Version in manifest.json steht. Die Notizen kommen aus CHANGELOG.md.
+on:
+  push:
+    branches: [main]
+    paths:
+      - custom_components/schaltzentrale/manifest.json
+      - CHANGELOG.md
+      - .github/workflows/release.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Version lesen
+        id: v
+        run: echo "version=$(jq -r .version custom_components/schaltzentrale/manifest.json)" >> "$GITHUB_OUTPUT"
+      - name: Release anlegen, falls neu
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "v$VERSION gibt es schon."
+            exit 0
+          fi
+          awk -v v="$VERSION" '$0 ~ "^## "v" " {f=1; next} /^## / {f=0} f' CHANGELOG.md > notes.md
+          gh release create "v$VERSION" --title "$VERSION" --notes-file notes.md --target "$GITHUB_SHA" --latest
