@@ -1,4 +1,4 @@
-"""Ende-zu-Ende-Tests mit einem echten (Test-)Home-Assistant."""
+"""End-to-end tests with a real (test) Home Assistant."""
 
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, patch
@@ -12,7 +12,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry, async_
 import custom_components.switchmanager  # noqa: E402,F401
 
 TZ = ZoneInfo("Europe/Berlin")
-START = datetime(2026, 11, 23, 14, 0, tzinfo=TZ)  # Montag
+START = datetime(2026, 11, 23, 14, 0, tzinfo=TZ)  # Monday
 
 
 def cfg(windows, active=True, season=None):
@@ -20,9 +20,9 @@ def cfg(windows, active=True, season=None):
         "paused": False,
         "sync_on_start": True,
         "themes": [{
-            "id": "aussen", "name": "Weihnachten Außen", "color": "#f59e0b", "active": active,
+            "id": "outdoor", "name": "Christmas outdoor", "color": "#f59e0b", "active": active,
             "season": season or {"enabled": False, "start": "11-29", "end": "01-06"},
-            "groups": [{"id": "fenster", "name": "Fenster", "entities": ["input_boolean.lampe", "input_boolean.weg"],
+            "groups": [{"id": "windows", "name": "Windows", "entities": ["input_boolean.lamp", "input_boolean.gone"],
                         "windows": windows}],
         }],
     }
@@ -35,11 +35,11 @@ WIN = [{"days": [0, 1, 2, 3, 4, 5, 6], "from": {"type": "time", "time": "15:00"}
 async def setup(hass: HomeAssistant, freezer, hass_ws_client):
     await hass.config.async_set_time_zone("Europe/Berlin")
     assert await async_setup_component(hass, "http", {})
-    client = await hass_ws_client(hass)  # vor dem Zeitsprung anmelden
+    client = await hass_ws_client(hass)  # log in before the time jump
     freezer.move_to(START)
     assert await async_setup_component(hass, "homeassistant", {})
-    assert await async_setup_component(hass, "input_boolean", {"input_boolean": {"lampe": {}}})
-    # Frontend gibt es im Test nicht; als geladen markieren
+    assert await async_setup_component(hass, "input_boolean", {"input_boolean": {"lamp": {}}})
+    # There is no frontend in tests; mark it as loaded
     for dep in ("frontend", "panel_custom"):
         hass.config.components.add(dep)
     entry = MockConfigEntry(domain="switchmanager", title="SwitchManager")
@@ -78,18 +78,18 @@ async def test_schedule_switches_on_and_off(hass, setup, freezer):
     _entry, client = setup
     result = await _save(client, cfg(WIN))
     await hass.async_block_till_done()
-    assert result["status"]["groups"]["fenster"]["on"] is False
-    assert hass.states.get("input_boolean.lampe").state == "off"
-    # Struktur geändert -> Neuladen erzeugt Entitäten
-    assert hass.states.get("switch.switchmanager_weihnachten_aussen") is not None
-    assert hass.states.get("binary_sensor.switchmanager_weihnachten_aussen_fenster").state == "off"
+    assert result["status"]["groups"]["windows"]["on"] is False
+    assert hass.states.get("input_boolean.lamp").state == "off"
+    # Structure changed -> reload creates entities
+    assert hass.states.get("switch.switchmanager_christmas_outdoor") is not None
+    assert hass.states.get("binary_sensor.switchmanager_christmas_outdoor_windows").state == "off"
 
     await _tick(hass, freezer, START.replace(hour=15, second=1))
-    assert hass.states.get("input_boolean.lampe").state == "on"
-    assert hass.states.get("binary_sensor.switchmanager_weihnachten_aussen_fenster").state == "on"
+    assert hass.states.get("input_boolean.lamp").state == "on"
+    assert hass.states.get("binary_sensor.switchmanager_christmas_outdoor_windows").state == "on"
 
     await _tick(hass, freezer, START.replace(hour=16, second=1))
-    assert hass.states.get("input_boolean.lampe").state == "off"
+    assert hass.states.get("input_boolean.lamp").state == "off"
 
 
 async def test_theme_switch_off_turns_devices_off(hass, setup, freezer):
@@ -97,12 +97,12 @@ async def test_theme_switch_off_turns_devices_off(hass, setup, freezer):
     await _save(client, cfg(WIN))
     await hass.async_block_till_done()
     await _tick(hass, freezer, START.replace(hour=15, minute=10))
-    assert hass.states.get("input_boolean.lampe").state == "on"
+    assert hass.states.get("input_boolean.lamp").state == "on"
 
-    await hass.services.async_call("switch", "turn_off", {"entity_id": "switch.switchmanager_weihnachten_aussen"}, blocking=True)
+    await hass.services.async_call("switch", "turn_off", {"entity_id": "switch.switchmanager_christmas_outdoor"}, blocking=True)
     await hass.async_block_till_done()
-    assert hass.states.get("input_boolean.lampe").state == "off"
-    assert hass.states.get("binary_sensor.switchmanager_weihnachten_aussen_fenster").attributes["reason"] == "theme_off"
+    assert hass.states.get("input_boolean.lamp").state == "off"
+    assert hass.states.get("binary_sensor.switchmanager_christmas_outdoor_windows").attributes["reason"] == "theme_off"
 
 
 async def test_pause_freezes_and_resume_syncs(hass, setup, freezer):
@@ -111,10 +111,10 @@ async def test_pause_freezes_and_resume_syncs(hass, setup, freezer):
     await hass.async_block_till_done()
     await hass.services.async_call("switch", "turn_on", {"entity_id": "switch.switchmanager_pause"}, blocking=True)
     await _tick(hass, freezer, START.replace(hour=15, minute=5))
-    assert hass.states.get("input_boolean.lampe").state == "off"  # pausiert: nichts passiert
+    assert hass.states.get("input_boolean.lamp").state == "off"  # paused: nothing happens
     await hass.services.async_call("switch", "turn_off", {"entity_id": "switch.switchmanager_pause"}, blocking=True)
     await hass.async_block_till_done()
-    assert hass.states.get("input_boolean.lampe").state == "on"  # nach Pause auf Planstand
+    assert hass.states.get("input_boolean.lamp").state == "on"  # after pause back to the plan
 
 
 async def test_out_of_season_does_nothing(hass, setup, freezer):
@@ -122,7 +122,7 @@ async def test_out_of_season_does_nothing(hass, setup, freezer):
     await _save(client, cfg(WIN, season={"enabled": True, "start": "11-29", "end": "01-06"}))
     await hass.async_block_till_done()
     await _tick(hass, freezer, START.replace(hour=15, minute=5))
-    assert hass.states.get("input_boolean.lampe").state == "off"
+    assert hass.states.get("input_boolean.lamp").state == "off"
 
 
 async def test_invalid_config_rejected(hass, setup):
@@ -141,7 +141,7 @@ async def test_removed_group_entity_cleaned_up(hass, setup):
     empty["themes"][0]["groups"] = []
     await _save(client, empty)
     await hass.async_block_till_done()
-    assert hass.states.get("binary_sensor.switchmanager_weihnachten_aussen_fenster") is None
+    assert hass.states.get("binary_sensor.switchmanager_christmas_outdoor_windows") is None
 
 
 async def test_imports_old_schaltzentrale_config(hass, hass_storage, freezer, hass_ws_client):
@@ -160,7 +160,7 @@ async def test_imports_old_schaltzentrale_config(hass, hass_storage, freezer, ha
         await hass.async_block_till_done()
     await client.send_json_auto_id({"type": "switchmanager/get"})
     res = await client.receive_json()
-    assert res["result"]["config"]["themes"][0]["name"] == "Weihnachten Außen"
+    assert res["result"]["config"]["themes"][0]["name"] == "Christmas outdoor"
 
 
 async def test_conflict_check_finds_other_automations(hass, setup):
@@ -169,27 +169,27 @@ async def test_conflict_check_finds_other_automations(hass, setup):
     await _save(client, cfg(window))
     await hass.async_block_till_done()
     assert await async_setup_component(hass, "scene", {"scene": [
-        {"name": "Lampe an", "entities": {"input_boolean.lampe": "on"}}]})
+        {"name": "Lamp on", "entities": {"input_boolean.lamp": "on"}}]})
     assert await async_setup_component(hass, "automation", {"automation": [
-        {"id": "a1", "alias": "Lampe aus um 18", "triggers": [{"trigger": "time", "at": "18:00:00"}],
-         "actions": [{"action": "input_boolean.turn_off", "target": {"entity_id": "input_boolean.lampe"}}]},
-        {"id": "a2", "alias": "Alte Weihnacht an", "triggers": [{"trigger": "time", "at": "15:00:00"}],
-         "actions": [{"action": "scene.turn_on", "target": {"entity_id": "scene.lampe_an"}}]},
-        {"id": "a3", "alias": "Bewegung", "triggers": [{"trigger": "state", "entity_id": "input_boolean.weg"}],
-         "actions": [{"action": "homeassistant.toggle", "entity_id": "input_boolean.lampe"}]},
-        {"id": "a4", "alias": "Unbeteiligt", "triggers": [{"trigger": "time", "at": "10:00:00"}],
-         "actions": [{"action": "input_boolean.turn_on", "target": {"entity_id": "input_boolean.anderes"}}]},
+        {"id": "a1", "alias": "Lamp off at 18", "triggers": [{"trigger": "time", "at": "18:00:00"}],
+         "actions": [{"action": "input_boolean.turn_off", "target": {"entity_id": "input_boolean.lamp"}}]},
+        {"id": "a2", "alias": "Old Christmas on", "triggers": [{"trigger": "time", "at": "15:00:00"}],
+         "actions": [{"action": "scene.turn_on", "target": {"entity_id": "scene.lamp_on"}}]},
+        {"id": "a3", "alias": "Motion", "triggers": [{"trigger": "state", "entity_id": "input_boolean.gone"}],
+         "actions": [{"action": "homeassistant.toggle", "entity_id": "input_boolean.lamp"}]},
+        {"id": "a4", "alias": "Unrelated", "triggers": [{"trigger": "time", "at": "10:00:00"}],
+         "actions": [{"action": "input_boolean.turn_on", "target": {"entity_id": "input_boolean.other"}}]},
     ]})
     await hass.async_block_till_done()
     await client.send_json_auto_id({"type": "switchmanager/check"})
     res = await client.receive_json()
     assert res["success"], res
-    findings = res["result"]["groups"]["fenster"]
+    findings = res["result"]["groups"]["windows"]
     codes = {(f["automation"]["name"] if f["automation"] else None, f["code"]) for f in findings}
-    assert ("Lampe aus um 18", "turns_off_against_plan") in codes
-    assert ("Alte Weihnacht an", "duplicate") in codes
-    assert ("Bewegung", "toggle") in codes
-    assert (None, "unavailable") in codes  # input_boolean.weg does not exist
-    assert not any(name == "Unbeteiligt" for name, _ in codes)
+    assert ("Lamp off at 18", "turns_off_against_plan") in codes
+    assert ("Old Christmas on", "duplicate") in codes
+    assert ("Motion", "toggle") in codes
+    assert (None, "unavailable") in codes  # input_boolean.gone does not exist
+    assert not any(name == "Unrelated" for name, _ in codes)
     conflict = next(f for f in findings if f["code"] == "turns_off_against_plan")
     assert conflict["level"] == "conflict" and conflict["hour"] == 18 and conflict["automation"]["edit_id"] == "a1"

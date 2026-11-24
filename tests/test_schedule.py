@@ -1,4 +1,4 @@
-"""Tests der reinen Zeitplan-Logik (ohne Home Assistant)."""
+"""Tests of the plain schedule logic (no Home Assistant needed)."""
 
 import importlib.util
 import sys
@@ -27,7 +27,7 @@ TZ = ZoneInfo("Europe/Berlin")
 
 
 def sun(kind, day):
-    # Fest: Aufgang 07:48, Untergang 16:28
+    # Fixed: sunrise 07:48, sunset 16:28
     hour, minute = (7, 48) if kind == "sunrise" else (16, 28)
     return datetime(day.year, day.month, day.day, hour, minute, tzinfo=TZ)
 
@@ -40,7 +40,7 @@ def t(hhmm):
     return {"type": "time", "time": hhmm}
 
 
-# 23.11.2026 ist ein Montag
+# 23 Nov 2026 is a Monday
 MONDAY = (2026, 11, 23)
 
 
@@ -101,7 +101,7 @@ def test_no_windows():
 
 def test_intervals_on_day_clips_midnight():
     group = {"windows": [{"days": [6], "from": t("22:00"), "to": t("02:00")}]}
-    # Sonntag 22.11. -> Montag 0-2 Uhr
+    # Sunday 22 Nov -> Monday 0-2 h
     assert schedule.intervals_on_day(group, date(*MONDAY), TZ, sun) == [(0.0, 2.0)]
 
 
@@ -120,8 +120,8 @@ def test_season_disabled_is_always_on():
 
 
 def test_config_schema_defaults_and_validation():
-    cfg = models.CONFIG_SCHEMA({"themes": [{"id": "aussen", "name": "Außen", "groups": [
-        {"id": "fenster", "name": "Fenster", "entities": ["switch.tasmota_7"],
+    cfg = models.CONFIG_SCHEMA({"themes": [{"id": "outdoor", "name": "Outdoor", "groups": [
+        {"id": "windows", "name": "Windows", "entities": ["switch.tasmota_7"],
          "windows": [{"days": [3, 1, 1], "from": {"type": "sunset"}, "to": t("23:00")}]}]}]})
     theme = cfg["themes"][0]
     assert cfg["paused"] is False and theme["active"] is True and theme["season"]["enabled"] is False
@@ -145,7 +145,7 @@ def test_structure_key_ignores_schedule_changes():
 
 
 def test_start_after_end_same_morning_is_empty_not_24h():
-    # Aufgang (07:48) bis 07:30: kein Fenster, statt bis zum nächsten Tag an
+    # Sunrise (07:48) until 07:30: no window, instead of on until the next day
     group = {"windows": [{"days": [0], "from": {"type": "sunrise"}, "to": t("07:30")}]}
     assert not schedule.evaluate(group, at(*MONDAY, 9), TZ, sun).on
     assert schedule.intervals_on_day(group, date(*MONDAY), TZ, sun) == []

@@ -1,4 +1,4 @@
-name: Prüfen
+name: Validate
 
 on:
   push:

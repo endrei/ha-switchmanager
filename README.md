@@ -86,7 +86,7 @@ The integration creates a device **SwitchManager** with:
 
 * `switch.switchmanager_pause`: on = all plans paused.
 * `switch.switchmanager_<theme>`: on/off per theme (attributes: `season`, `in_season`).
-* `binary_sensor.switchmanager_<group>`: on while the group is on according to its plan
+* `binary_sensor.switchmanager_<theme>_<group>`: on while the group is on according to its plan
   (attributes: `reason`, `next_change`, `next_state`, `switches`).
 
 So you can also control SwitchManager from automations or by voice.

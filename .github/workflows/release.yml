@@ -1,7 +1,7 @@
 name: Release
 
-# Legt automatisch ein GitHub-Release an, sobald auf main eine neue
-# Version in manifest.json steht. Die Notizen kommen aus CHANGELOG.md.
+# Creates a GitHub release as soon as main has a new version in
+# manifest.json. The release notes come from CHANGELOG.md.
 on:
   push:
     branches: [main]
@@ -19,16 +19,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Version lesen
+      - name: Read version
         id: v
         run: echo "version=$(jq -r .version custom_components/switchmanager/manifest.json)" >> "$GITHUB_OUTPUT"
-      - name: Release anlegen, falls neu
+      - name: Create release if new
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.v.outputs.version }}
         run: |
           if gh release view "v$VERSION" >/dev/null 2>&1; then
-            echo "v$VERSION gibt es schon."
+            echo "v$VERSION already exists."
             exit 0
           fi
           awk -v v="$VERSION" '$0 ~ "^## "v" " {f=1; next} /^## / {f=0} f' CHANGELOG.md > notes.md
