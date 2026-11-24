@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "SwitchManager",
-        "description": "Wochenpläne für deine Schalter. Nach dem Einrichten findest du den **SwitchManager** in der Seitenleiste."
+        "description": "Wochenpläne für deine Schalter. Nach dem Einrichten findest du den **SwitchManager** in der Seitenleiste.\n\nNutzung auf eigene Gefahr: SwitchManager wird ohne jede Gewährleistung bereitgestellt, die Autoren haften nicht für Schäden durch die Nutzung (siehe MIT-Lizenz)."
       }
     },
     "abort": {

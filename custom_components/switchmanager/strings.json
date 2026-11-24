@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "SwitchManager",
-        "description": "Weekly schedules for your switches. After setup, open **SwitchManager** in the sidebar."
+        "description": "Weekly schedules for your switches. After setup, open **SwitchManager** in the sidebar.\n\nUse at your own risk: SwitchManager is provided without any warranty, and the authors accept no liability for damage caused by its use (see the MIT license)."
       }
     },
     "abort": {

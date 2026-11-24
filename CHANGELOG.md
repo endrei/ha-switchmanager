@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1 (24.11.2026)
+- Disclaimer: use at your own risk, no warranty and no liability. Shown in the
+  README and when adding the integration.
+
 ## 0.2.0 (23.11.2026)
 - New name: **SwitchManager** (domain `switchmanager`). The configuration of
   Schaltzentrale is imported automatically. Entity ids are now `switchmanager_*`,

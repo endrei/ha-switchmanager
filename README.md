@@ -4,7 +4,10 @@ Weekly schedules for your switches in Home Assistant, set up with a few clicks a
 Made for everything that should turn on and off at fixed times, for example Christmas lights on
 Tasmota or Shelly plugs.
 
-The panel and the card speak English and German and follow your Home Assistant language.
+> **Use at your own risk.** SwitchManager switches real devices. It comes without any warranty and the
+> authors accept no liability for damage caused by its use. See [Disclaimer](#disclaimer).
+
+The panel and the card are in German when your Home Assistant profile language is German, and in English otherwise.
 
 ![Panel](docs/panel.png)
 
@@ -113,3 +116,16 @@ pytest
 `tests/test_schedule.py` checks the time logic (sun, midnight, season), `tests/test_conflicts.py`
 the automation parsing and `tests/test_integration.py` runs switching times and the conflict check
 in a test Home Assistant.
+
+## Disclaimer
+
+SwitchManager is a free hobby project, provided "as is" under the [MIT license](LICENSE), without
+warranty of any kind. It switches real devices on and off. You use it at your own risk and are
+responsible for what you connect to it and for checking that it works as you expect.
+
+To the extent permitted by law, the authors are not liable for any damage, loss or costs caused by
+using SwitchManager, for example devices that switch at the wrong time or not at all, overheating,
+fire, higher energy costs or data loss. Do not use it for devices whose failure could put people,
+animals or property at risk (e.g. heating, medical devices, pumps, security systems).
+
+SwitchManager is not affiliated with or endorsed by Home Assistant or Nabu Casa.
