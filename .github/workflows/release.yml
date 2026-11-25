@@ -32,4 +32,10 @@ jobs:
             exit 0
           fi
           awk -v v="$VERSION" '$0 ~ "^## "v" " {f=1; next} /^## / {f=0} f' CHANGELOG.md > notes.md
-          gh release create "v$VERSION" --title "$VERSION" --notes-file notes.md --target "$GITHUB_SHA" --latest
+          # retry: the GitHub API sometimes answers with a temporary 5xx error
+          for attempt in 1 2 3 4 5; do
+            gh release create "v$VERSION" --title "$VERSION" --notes-file notes.md --target "$GITHUB_SHA" --latest && exit 0
+            gh release view "v$VERSION" >/dev/null 2>&1 && exit 0
+            sleep $((attempt * 15))
+          done
+          exit 1
