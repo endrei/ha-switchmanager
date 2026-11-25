@@ -1,0 +1,18 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "SwitchPlan",
+        "description": "Wochenpläne für deine Schalter. Nach dem Einrichten findest du den **SwitchPlan** in der Seitenleiste.\n\nNutzung auf eigene Gefahr: SwitchPlan wird ohne jede Gewährleistung bereitgestellt, die Autoren haften nicht für Schäden durch die Nutzung (siehe MIT-Lizenz)."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Ist bereits eingerichtet."
+    }
+  },
+  "entity": {
+    "switch": {
+      "pause": { "name": "Pause" }
+    }
+  }
+}

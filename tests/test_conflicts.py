@@ -3,7 +3,7 @@
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
-from custom_components.switchmanager import conflicts
+from custom_components.switchplan import conflicts
 
 
 TZ = ZoneInfo("Europe/Berlin")

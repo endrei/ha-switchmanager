@@ -9,10 +9,10 @@ from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from .const import DOMAIN
 
 
-class SwitchManagerConfigFlow(ConfigFlow, domain=DOMAIN):
+class SwitchPlanConfigFlow(ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         if user_input is not None:
-            return self.async_create_entry(title="SwitchManager", data={})
+            return self.async_create_entry(title="SwitchPlan", data={})
         return self.async_show_form(step_id="user")

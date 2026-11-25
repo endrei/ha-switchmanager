@@ -1,0 +1,18 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "SwitchPlan",
+        "description": "Weekly schedules for your switches. After setup, open **SwitchPlan** in the sidebar.\n\nUse at your own risk: SwitchPlan is provided without any warranty, and the authors accept no liability for damage caused by its use (see the MIT license)."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Already set up."
+    }
+  },
+  "entity": {
+    "switch": {
+      "pause": { "name": "Pause" }
+    }
+  }
+}

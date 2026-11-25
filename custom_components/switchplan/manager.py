@@ -1,4 +1,4 @@
-"""Core of SwitchManager: holds the configuration, evaluates schedules and switches."""
+"""Core of SwitchPlan: holds the configuration, evaluates schedules and switches."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from homeassistant.util import dt as dt_util
 
 from . import schedule
 from .const import (
-    LEGACY_STORAGE_KEY,
+    LEGACY_STORAGE_KEYS,
     REASON_PAUSED,
     REASON_PLAN,
     REASON_SEASON,
@@ -51,10 +51,13 @@ class Manager:
     async def async_load(self) -> None:
         stored = await self._store.async_load()
         if not stored:
-            # Earlier versions were called "Schaltzentrale": take over their data
-            stored = await Store(self.hass, STORAGE_VERSION, LEGACY_STORAGE_KEY).async_load()
+            # Earlier versions were called SwitchManager / Schaltzentrale
+            for key in LEGACY_STORAGE_KEYS:
+                stored = await Store(self.hass, STORAGE_VERSION, key).async_load()
+                if stored:
+                    break
             if stored:
-                _LOGGER.info("Imported configuration from Schaltzentrale")
+                _LOGGER.info("Imported configuration from %s", key)
                 try:
                     await self._store.async_save(CONFIG_SCHEMA(stored))
                 except Exception:  # noqa: BLE001

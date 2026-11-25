@@ -8,7 +8,7 @@ from homeassistant.components.switch import SwitchEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .entity import SwitchManagerEntity
+from .entity import SwitchPlanEntity
 from .manager import Manager
 
 
@@ -19,7 +19,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities: AddE
     async_add_entities(entities)
 
 
-class PauseSwitch(SwitchManagerEntity, SwitchEntity):
+class PauseSwitch(SwitchPlanEntity, SwitchEntity):
     """On = all schedules paused, nothing is switched."""
 
     _attr_translation_key = "pause"
@@ -40,7 +40,7 @@ class PauseSwitch(SwitchManagerEntity, SwitchEntity):
         await self.manager.async_update(lambda c: c.update(paused=False))
 
 
-class ThemeSwitch(SwitchManagerEntity, SwitchEntity):
+class ThemeSwitch(SwitchPlanEntity, SwitchEntity):
     """On/off of a theme (e.g. Christmas outdoor)."""
 
     _attr_icon = "mdi:string-lights"

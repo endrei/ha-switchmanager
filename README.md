@@ -1,10 +1,10 @@
-# SwitchManager
+# SwitchPlan
 
 Weekly schedules for your switches in Home Assistant, set up with a few clicks and without a line of YAML.
 Made for everything that should turn on and off at fixed times, for example Christmas lights on
 Tasmota or Shelly plugs.
 
-> **Use at your own risk.** SwitchManager switches real devices. It comes without any warranty and the
+> **Use at your own risk.** SwitchPlan switches real devices. It comes without any warranty and the
 > authors accept no liability for damage caused by its use. See [Disclaimer](#disclaimer).
 
 The panel and the card are in German when your Home Assistant profile language is German, and in English otherwise.
@@ -35,7 +35,7 @@ Works with all entities of the domains `switch`, `light`, `input_boolean` and `f
 
 ![Conflict check](docs/check.png)
 
-Your switches may still be part of older automations. SwitchManager reads all automations
+Your switches may still be part of older automations. SwitchPlan reads all automations
 (including the scenes they activate), works out when they fire and compares that with your plan:
 
 | Level | Meaning |
@@ -53,22 +53,23 @@ automation in the editor or disable it with one click.
 
 1. Open HACS, top right **⋮ → Custom repositories**.
 2. Enter `https://github.com/endrei/ha-switchmanager`, type **Integration**, add.
-3. Search for **SwitchManager**, download it and restart Home Assistant.
-4. **Settings → Devices & services → Add integration → SwitchManager**.
-5. **SwitchManager** appears in the sidebar. You set up everything there.
+3. Search for **SwitchPlan**, download it and restart Home Assistant.
+4. **Settings → Devices & services → Add integration → SwitchPlan**.
+5. **SwitchPlan** appears in the sidebar. You set up everything there.
 
-Manual install: copy the folder `custom_components/switchmanager` to `config/custom_components/` and restart.
+Manual install: copy the folder `custom_components/switchplan` to `config/custom_components/` and restart.
 
-### Coming from "Schaltzentrale" (0.1.x)
+### Coming from SwitchManager (0.2.x) or Schaltzentrale (0.1.x)
 
-The project used to be called Schaltzentrale. When updating to 0.2.0:
+The project was called Schaltzentrale and then SwitchManager. When updating to 0.3.0:
 
 1. Update in HACS and restart Home Assistant.
-2. Delete the old **Schaltzentrale** integration entry and add **SwitchManager** (step 4 above).
-   Your themes, groups and plans are imported automatically.
-3. Delete the old folder `config/custom_components/schaltzentrale` if it is still there.
-4. Entity ids change from `schaltzentrale_*` to `switchmanager_*`, and the card type is now
-   `custom:switchmanager-card`. Adjust automations and dashboards that use them.
+2. Delete the old **SwitchManager** (or **Schaltzentrale**) integration entry and add **SwitchPlan**
+   (step 4 above). Your themes, groups and plans are imported automatically.
+3. Delete the old folder `config/custom_components/switchmanager` (or `schaltzentrale`) if it is
+   still there. Otherwise both versions switch your devices.
+4. Entity ids change to `switchplan_*`, and the card type is now `custom:switchplan-card`.
+   Adjust automations and dashboards that use them.
 5. Reload the browser (Ctrl+F5).
 
 ## Using the panel
@@ -85,14 +86,14 @@ Everything is saved automatically.
 
 ## Entities
 
-The integration creates a device **SwitchManager** with:
+The integration creates a device **SwitchPlan** with:
 
-* `switch.switchmanager_pause`: on = all plans paused.
-* `switch.switchmanager_<theme>`: on/off per theme (attributes: `season`, `in_season`).
-* `binary_sensor.switchmanager_<theme>_<group>`: on while the group is on according to its plan
+* `switch.switchplan_pause`: on = all plans paused.
+* `switch.switchplan_<theme>`: on/off per theme (attributes: `season`, `in_season`).
+* `binary_sensor.switchplan_<theme>_<group>`: on while the group is on according to its plan
   (attributes: `reason`, `next_change`, `next_state`, `switches`).
 
-So you can also control SwitchManager from automations or by voice.
+So you can also control SwitchPlan from automations or by voice.
 
 ## Dashboard card
 
@@ -101,7 +102,7 @@ So you can also control SwitchManager from automations or by voice.
 The card is loaded automatically. In a dashboard choose **Add card → Manual**:
 
 ```yaml
-type: custom:switchmanager-card
+type: custom:switchplan-card
 title: Switched today          # optional
 theme: Christmas outdoor       # optional, only this theme
 ```
@@ -119,13 +120,13 @@ in a test Home Assistant.
 
 ## Disclaimer
 
-SwitchManager is a free hobby project, provided "as is" under the [MIT license](LICENSE), without
+SwitchPlan is a free hobby project, provided "as is" under the [MIT license](LICENSE), without
 warranty of any kind. It switches real devices on and off. You use it at your own risk and are
 responsible for what you connect to it and for checking that it works as you expect.
 
 To the extent permitted by law, the authors are not liable for any damage, loss or costs caused by
-using SwitchManager, for example devices that switch at the wrong time or not at all, overheating,
+using SwitchPlan, for example devices that switch at the wrong time or not at all, overheating,
 fire, higher energy costs or data loss. Do not use it for devices whose failure could put people,
 animals or property at risk (e.g. heating, medical devices, pumps, security systems).
 
-SwitchManager is not affiliated with or endorsed by Home Assistant or Nabu Casa.
+SwitchPlan is not affiliated with or endorsed by Home Assistant or Nabu Casa.

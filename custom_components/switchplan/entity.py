@@ -1,4 +1,4 @@
-"""Common base for all SwitchManager entities."""
+"""Common base for all SwitchPlan entities."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from .const import DOMAIN, SIGNAL_UPDATE, VERSION
 from .manager import Manager
 
 
-class SwitchManagerEntity(Entity):
+class SwitchPlanEntity(Entity):
     _attr_should_poll = False
     _attr_has_entity_name = True
 
@@ -18,8 +18,8 @@ class SwitchManagerEntity(Entity):
         self.manager = manager
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry_id)},
-            name="SwitchManager",
-            manufacturer="SwitchManager",
+            name="SwitchPlan",
+            manufacturer="SwitchPlan",
             sw_version=VERSION,
             entry_type=DeviceEntryType.SERVICE,
         )

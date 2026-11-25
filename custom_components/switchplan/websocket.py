@@ -33,7 +33,7 @@ def async_register(hass: HomeAssistant) -> None:
 def ws_get(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
     manager = _manager(hass)
     if manager is None:
-        connection.send_error(msg["id"], "not_loaded", "SwitchManager is not loaded")
+        connection.send_error(msg["id"], "not_loaded", "SwitchPlan is not loaded")
         return
     connection.send_result(msg["id"], {"config": manager.config, "status": manager.status})
 
@@ -46,7 +46,7 @@ def ws_get(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg:
 async def ws_save(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
     manager = _manager(hass)
     if manager is None:
-        connection.send_error(msg["id"], "not_loaded", "SwitchManager is not loaded")
+        connection.send_error(msg["id"], "not_loaded", "SwitchPlan is not loaded")
         return
     try:
         config = CONFIG_SCHEMA(msg["config"])
@@ -90,7 +90,7 @@ def ws_check(hass: HomeAssistant, connection: websocket_api.ActiveConnection, ms
     """Conflict check: other automations that switch the managed devices."""
     manager = _manager(hass)
     if manager is None:
-        connection.send_error(msg["id"], "not_loaded", "SwitchManager is not loaded")
+        connection.send_error(msg["id"], "not_loaded", "SwitchPlan is not loaded")
         return
     tz = dt_util.get_default_time_zone()
     today = dt_util.now().astimezone(tz).date()

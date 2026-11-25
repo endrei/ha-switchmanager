@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0 (25.11.2026)
+- New name: **SwitchPlan** (domain `switchplan`), because "Switch Manager" is
+  already taken in the Home Assistant world. The configuration of SwitchManager
+  or Schaltzentrale is imported automatically. Entity ids are now `switchplan_*`,
+  the card is `custom:switchplan-card`.
+
 ## 0.2.1 (24.11.2026)
 - Disclaimer: use at your own risk, no warranty and no liability. Shown in the
   README and when adding the integration.

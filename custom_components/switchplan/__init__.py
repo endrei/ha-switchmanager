@@ -1,4 +1,4 @@
-"""SwitchManager: weekly schedules for your switches, set up with a few clicks."""
+"""SwitchPlan: weekly schedules for your switches, set up with a few clicks."""
 
 from __future__ import annotations
 
@@ -27,10 +27,10 @@ from .manager import Manager
 
 _LOGGER = logging.getLogger(__name__)
 
-type SwitchManagerConfigEntry = ConfigEntry[Manager]
+type SwitchPlanConfigEntry = ConfigEntry[Manager]
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: SwitchManagerConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: SwitchPlanConfigEntry) -> bool:
     data = hass.data.setdefault(DOMAIN, {})
 
     manager = Manager(hass, last=data.get("last"))
@@ -43,7 +43,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: SwitchManagerConfigEntry
         await hass.http.async_register_static_paths(
             [StaticPathConfig(STATIC_URL, str(Path(__file__).parent / "static"), False)]
         )
-        frontend.add_extra_js_url(hass, f"{STATIC_URL}/switchmanager-card.js?v={VERSION}")
+        frontend.add_extra_js_url(hass, f"{STATIC_URL}/switchplan-card.js?v={VERSION}")
         websocket.async_register(hass)
         data["static"] = True
 
@@ -69,13 +69,13 @@ async def _register_panel(hass: HomeAssistant) -> None:
         webcomponent_name=PANEL_COMPONENT,
         sidebar_title=PANEL_TITLE,
         sidebar_icon=PANEL_ICON,
-        module_url=f"{STATIC_URL}/switchmanager-panel.js?v={VERSION}",
+        module_url=f"{STATIC_URL}/switchplan-panel.js?v={VERSION}",
         require_admin=True,
         config={},
     )
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: SwitchManagerConfigEntry) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: SwitchPlanConfigEntry) -> bool:
     manager: Manager = entry.runtime_data
     manager.stop()
     data = hass.data.get(DOMAIN, {})

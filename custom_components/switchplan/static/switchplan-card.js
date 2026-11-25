@@ -1,21 +1,21 @@
-/* SwitchManager dashboard card "Today".
+/* SwitchPlan dashboard card "Today".
  * Loaded automatically by the integration.
- *   type: custom:switchmanager-card
+ *   type: custom:switchplan-card
  *   title: Today                 # optional
  *   theme: Christmas outdoor     # optional, only this theme (name or id)
  */
 
 const CARD_TEXT = {
-  de: { locale: "de-DE", title: "Heute geschaltet", unreachable: "SwitchManager nicht erreichbar: {err}", loading: "Lade …",
+  de: { locale: "de-DE", title: "Heute geschaltet", unreachable: "SwitchPlan nicht erreichbar: {err}", loading: "Lade …",
     paused: "Pausiert", themeOff: "Thema aus", season: "Keine Saison", on: "AN", off: "AUS", onW: "An", offW: "Aus",
     at: "um", tomorrowAt: "morgen um", on_day: "am", resting: "Plan ruht",
-    empty: "Noch keine Gruppen angelegt. Öffne SwitchManager in der Seitenleiste.", open: "Öffnen",
-    cardName: "SwitchManager: Heute", cardDesc: "Zeigt, wann deine Gruppen heute an sind." },
-  en: { locale: "en-GB", title: "Switched today", unreachable: "SwitchManager not reachable: {err}", loading: "Loading …",
+    empty: "Noch keine Gruppen angelegt. Öffne SwitchPlan in der Seitenleiste.", open: "Öffnen",
+    cardName: "SwitchPlan: Heute", cardDesc: "Zeigt, wann deine Gruppen heute an sind." },
+  en: { locale: "en-GB", title: "Switched today", unreachable: "SwitchPlan not reachable: {err}", loading: "Loading …",
     paused: "Paused", themeOff: "Theme off", season: "Out of season", on: "ON", off: "OFF", onW: "On", offW: "Off",
     at: "at", tomorrowAt: "tomorrow at", on_day: "on", resting: "Plan resting",
-    empty: "No groups yet. Open SwitchManager in the sidebar.", open: "Open",
-    cardName: "SwitchManager: Today", cardDesc: "Shows when your groups are on today." },
+    empty: "No groups yet. Open SwitchPlan in the sidebar.", open: "Open",
+    cardName: "SwitchPlan: Today", cardDesc: "Shows when your groups are on today." },
 };
 const cardLang = (hass) => {
   const l = String(hass?.locale?.language || hass?.language || navigator.language || "en").toLowerCase();
@@ -25,7 +25,7 @@ const cardLang = (hass) => {
 const escC = (v) =>
   String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
-class SwitchManagerCard extends HTMLElement {
+class SwitchPlanCard extends HTMLElement {
   setConfig(config) {
     this._config = config || {};
     if (!this.shadowRoot) this.attachShadow({ mode: "open" });
@@ -53,7 +53,7 @@ class SwitchManagerCard extends HTMLElement {
   _subscribe() {
     if (!this._hass || !this.isConnected) return;
     this._unsub = this._hass.connection
-      .subscribeMessage((msg) => { this._data = msg; this._paint(); }, { type: "switchmanager/subscribe" })
+      .subscribeMessage((msg) => { this._data = msg; this._paint(); }, { type: "switchplan/subscribe" })
       .catch((err) => { this._error = err.message || String(err); this._paint(); return null; });
   }
 
@@ -101,7 +101,7 @@ class SwitchManagerCard extends HTMLElement {
     this.shadowRoot.innerHTML = `<style>${CARD_CSS}</style>
       <ha-card>
         <div class="wrap">
-          <div class="top"><h2>${escC(title)}</h2><a href="/switchmanager" class="link">${escC(T.open)}</a></div>
+          <div class="top"><h2>${escC(title)}</h2><a href="/switchplan" class="link">${escC(T.open)}</a></div>
           ${body}
         </div>
       </ha-card>`;
@@ -129,11 +129,11 @@ h2 { margin:0; font-size:18px; font-weight:600; }
 .now { position:absolute; top:0; bottom:0; width:2px; background:#f87171; }
 `;
 
-if (!customElements.get("switchmanager-card")) {
-  customElements.define("switchmanager-card", SwitchManagerCard);
+if (!customElements.get("switchplan-card")) {
+  customElements.define("switchplan-card", SwitchPlanCard);
   window.customCards = window.customCards || [];
   window.customCards.push({
-    type: "switchmanager-card",
+    type: "switchplan-card",
     name: CARD_TEXT[cardLang()].cardName,
     description: CARD_TEXT[cardLang()].cardDesc,
   });

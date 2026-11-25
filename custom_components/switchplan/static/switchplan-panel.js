@@ -1,4 +1,4 @@
-/* SwitchManager panel: themes, groups and weekly plans for switches.
+/* SwitchPlan panel: themes, groups and weekly plans for switches.
  * Plain web component, no build step. Texts in German and English. */
 
 
@@ -7,8 +7,8 @@ const I18N = {
     locale: "de-DE",
     days: ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"],
     daysLong: ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"],
-    loading: "Lade SwitchManager …",
-    loadError: "SwitchManager konnte nicht geladen werden: {err}",
+    loading: "Lade SwitchPlan …",
+    loadError: "SwitchPlan konnte nicht geladen werden: {err}",
     tagline: "Wochenpläne für deine Schalter, ohne eine Zeile YAML",
     saving: "Speichern …",
     saved: "Gespeichert",
@@ -29,7 +29,7 @@ const I18N = {
     howItWorks: "<strong>Aufbau:</strong> Ein Thema (z. B. Weihnachten Außen) enthält Gruppen, jede Gruppe enthält Schalter und hat ihren eigenen Wochenplan. Ist ein Thema aus oder außerhalb seiner Saison, ruhen alle seine Pläne.",
     turnOff: "ausschalten",
     turnOn: "einschalten",
-    welcome: "Willkommen im SwitchManager",
+    welcome: "Willkommen im SwitchPlan",
     welcomeText: "Lege links dein erstes Thema an, zum Beispiel „Weihnachten Außen“. Darin legst du Gruppen mit deinen Schaltern an und gibst jeder Gruppe einen Wochenplan.",
     firstTheme: "Erstes Thema anlegen",
     yearRound: "ganzjährig",
@@ -149,8 +149,8 @@ const I18N = {
     locale: "en-GB",
     days: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
     daysLong: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
-    loading: "Loading SwitchManager …",
-    loadError: "Could not load SwitchManager: {err}",
+    loading: "Loading SwitchPlan …",
+    loadError: "Could not load SwitchPlan: {err}",
     tagline: "Weekly schedules for your switches, without a line of YAML",
     saving: "Saving …",
     saved: "Saved",
@@ -171,7 +171,7 @@ const I18N = {
     howItWorks: "<strong>How it works:</strong> A theme (e.g. Christmas outdoor) contains groups. Each group contains switches and has its own weekly plan. When a theme is off or out of season, all its plans rest.",
     turnOff: "turn off",
     turnOn: "turn on",
-    welcome: "Welcome to SwitchManager",
+    welcome: "Welcome to SwitchPlan",
     welcomeText: "Create your first theme on the left, for example “Christmas outdoor”. Inside it you add groups with your switches and give each group a weekly plan.",
     firstTheme: "Create first theme",
     yearRound: "all year",
@@ -341,7 +341,7 @@ function textToMd(text) {
   return String(month).padStart(2, "0") + "-" + String(day).padStart(2, "0");
 }
 
-class SwitchManagerPanel extends HTMLElement {
+class SwitchPlanPanel extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
@@ -394,7 +394,7 @@ class SwitchManagerPanel extends HTMLElement {
   async _init() {
     this._renderShell(this._t("loading"));
     try {
-      const res = await this._hass.callWS({ type: "switchmanager/get" });
+      const res = await this._hass.callWS({ type: "switchplan/get" });
       this._apply(res);
       this._subscribe();
       this._runCheck();
@@ -410,7 +410,7 @@ class SwitchManagerPanel extends HTMLElement {
         if (!this._saveTimer) this._cfg = msg.config;
         this._status = msg.status;
         this._softRender();
-      }, { type: "switchmanager/subscribe" })
+      }, { type: "switchplan/subscribe" })
       .catch(() => null);
   }
 
@@ -445,7 +445,7 @@ class SwitchManagerPanel extends HTMLElement {
 
   async _save() {
     try {
-      const res = await this._hass.callWS({ type: "switchmanager/save", config: this._cfg });
+      const res = await this._hass.callWS({ type: "switchplan/save", config: this._cfg });
       this._saveTimer = null;
       this._cfg = res.config;
       this._status = res.status;
@@ -473,7 +473,7 @@ class SwitchManagerPanel extends HTMLElement {
       this._checking = true;
       this._softRender();
       try {
-        const res = await this._hass.callWS({ type: "switchmanager/check" });
+        const res = await this._hass.callWS({ type: "switchplan/check" });
         this._findings = res.groups || {};
       } catch (_err) {
         this._findings = this._findings || {};
@@ -596,7 +596,7 @@ class SwitchManagerPanel extends HTMLElement {
       <div class="brand">
         ${this._narrow ? `<ha-menu-button></ha-menu-button>` : ""}
         <div class="logo">${ICON.power}</div>
-        <div><h1>SwitchManager</h1><p class="muted small">${esc(this._t("tagline"))}</p></div>
+        <div><h1>SwitchPlan</h1><p class="muted small">${esc(this._t("tagline"))}</p></div>
       </div>
       <div class="row wrap gap10">
         <span id="saved" class="muted small">${esc(this._ui.saved)}</span>
@@ -1429,15 +1429,15 @@ button.tday.on { border-color:var(--c); color:#fff; background:color-mix(in srgb
 }
 `;
 
-if (!document.getElementById("switchmanager-fonts")) {
+if (!document.getElementById("switchplan-fonts")) {
   // Fonts as in the design; without internet the system fonts are used
   const link = document.createElement("link");
-  link.id = "switchmanager-fonts";
+  link.id = "switchplan-fonts";
   link.rel = "stylesheet";
   link.href = "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap";
   document.head.appendChild(link);
 }
 
-if (!customElements.get("switchmanager-panel")) {
-  customElements.define("switchmanager-panel", SwitchManagerPanel);
+if (!customElements.get("switchplan-panel")) {
+  customElements.define("switchplan-panel", SwitchPlanPanel);
 }

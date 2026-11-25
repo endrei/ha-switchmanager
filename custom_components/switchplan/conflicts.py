@@ -1,4 +1,4 @@
-"""Conflict check: who else switches the devices that SwitchManager controls?
+"""Conflict check: who else switches the devices that SwitchPlan controls?
 
 Looks through all automations (and the scenes they activate) for actions that
 turn a managed switch on, off or toggle it, works out when they fire and

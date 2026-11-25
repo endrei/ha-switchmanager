@@ -8,7 +8,7 @@ from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .entity import SwitchManagerEntity
+from .entity import SwitchPlanEntity
 from .manager import Manager
 
 
@@ -21,7 +21,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities: AddE
     )
 
 
-class GroupPlanSensor(SwitchManagerEntity, BinarySensorEntity):
+class GroupPlanSensor(SwitchPlanEntity, BinarySensorEntity):
     _attr_icon = "mdi:calendar-clock"
 
     def __init__(self, manager: Manager, entry_id: str, group_id: str, name: str) -> None:

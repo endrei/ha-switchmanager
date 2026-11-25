@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
 
-import custom_components.switchmanager  # noqa: E402,F401
+import custom_components.switchplan  # noqa: E402,F401
 
 TZ = ZoneInfo("Europe/Berlin")
 START = datetime(2026, 11, 23, 14, 0, tzinfo=TZ)  # Monday
@@ -42,11 +42,11 @@ async def setup(hass: HomeAssistant, freezer, hass_ws_client):
     # There is no frontend in tests; mark it as loaded
     for dep in ("frontend", "panel_custom"):
         hass.config.components.add(dep)
-    entry = MockConfigEntry(domain="switchmanager", title="SwitchManager")
+    entry = MockConfigEntry(domain="switchplan", title="SwitchPlan")
     entry.add_to_hass(hass)
-    with patch("custom_components.switchmanager.panel_custom.async_register_panel") as reg, \
-         patch("custom_components.switchmanager.frontend.add_extra_js_url"), \
-         patch("custom_components.switchmanager.frontend.async_remove_panel"), \
+    with patch("custom_components.switchplan.panel_custom.async_register_panel") as reg, \
+         patch("custom_components.switchplan.frontend.add_extra_js_url"), \
+         patch("custom_components.switchplan.frontend.async_remove_panel"), \
          patch.object(hass.http, "async_register_static_paths", AsyncMock()):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
@@ -55,7 +55,7 @@ async def setup(hass: HomeAssistant, freezer, hass_ws_client):
 
 
 async def _save(client, config):
-    await client.send_json_auto_id({"type": "switchmanager/save", "config": config})
+    await client.send_json_auto_id({"type": "switchplan/save", "config": config})
     res = await client.receive_json()
     assert res["success"], res
     return res["result"]
@@ -69,7 +69,7 @@ async def _tick(hass, freezer, when):
 
 async def test_get_empty(hass, setup):
     _entry, client = setup
-    await client.send_json_auto_id({"type": "switchmanager/get"})
+    await client.send_json_auto_id({"type": "switchplan/get"})
     res = await client.receive_json()
     assert res["success"] and res["result"]["config"]["themes"] == []
 
@@ -81,12 +81,12 @@ async def test_schedule_switches_on_and_off(hass, setup, freezer):
     assert result["status"]["groups"]["windows"]["on"] is False
     assert hass.states.get("input_boolean.lamp").state == "off"
     # Structure changed -> reload creates entities
-    assert hass.states.get("switch.switchmanager_christmas_outdoor") is not None
-    assert hass.states.get("binary_sensor.switchmanager_christmas_outdoor_windows").state == "off"
+    assert hass.states.get("switch.switchplan_christmas_outdoor") is not None
+    assert hass.states.get("binary_sensor.switchplan_christmas_outdoor_windows").state == "off"
 
     await _tick(hass, freezer, START.replace(hour=15, second=1))
     assert hass.states.get("input_boolean.lamp").state == "on"
-    assert hass.states.get("binary_sensor.switchmanager_christmas_outdoor_windows").state == "on"
+    assert hass.states.get("binary_sensor.switchplan_christmas_outdoor_windows").state == "on"
 
     await _tick(hass, freezer, START.replace(hour=16, second=1))
     assert hass.states.get("input_boolean.lamp").state == "off"
@@ -99,20 +99,20 @@ async def test_theme_switch_off_turns_devices_off(hass, setup, freezer):
     await _tick(hass, freezer, START.replace(hour=15, minute=10))
     assert hass.states.get("input_boolean.lamp").state == "on"
 
-    await hass.services.async_call("switch", "turn_off", {"entity_id": "switch.switchmanager_christmas_outdoor"}, blocking=True)
+    await hass.services.async_call("switch", "turn_off", {"entity_id": "switch.switchplan_christmas_outdoor"}, blocking=True)
     await hass.async_block_till_done()
     assert hass.states.get("input_boolean.lamp").state == "off"
-    assert hass.states.get("binary_sensor.switchmanager_christmas_outdoor_windows").attributes["reason"] == "theme_off"
+    assert hass.states.get("binary_sensor.switchplan_christmas_outdoor_windows").attributes["reason"] == "theme_off"
 
 
 async def test_pause_freezes_and_resume_syncs(hass, setup, freezer):
     _entry, client = setup
     await _save(client, cfg(WIN))
     await hass.async_block_till_done()
-    await hass.services.async_call("switch", "turn_on", {"entity_id": "switch.switchmanager_pause"}, blocking=True)
+    await hass.services.async_call("switch", "turn_on", {"entity_id": "switch.switchplan_pause"}, blocking=True)
     await _tick(hass, freezer, START.replace(hour=15, minute=5))
     assert hass.states.get("input_boolean.lamp").state == "off"  # paused: nothing happens
-    await hass.services.async_call("switch", "turn_off", {"entity_id": "switch.switchmanager_pause"}, blocking=True)
+    await hass.services.async_call("switch", "turn_off", {"entity_id": "switch.switchplan_pause"}, blocking=True)
     await hass.async_block_till_done()
     assert hass.states.get("input_boolean.lamp").state == "on"  # after pause back to the plan
 
@@ -128,7 +128,7 @@ async def test_out_of_season_does_nothing(hass, setup, freezer):
 async def test_invalid_config_rejected(hass, setup):
     _entry, client = setup
     bad = cfg([{"days": [0], "from": {"type": "time", "time": "99:00"}, "to": {"type": "time", "time": "10:00"}}])
-    await client.send_json_auto_id({"type": "switchmanager/save", "config": bad})
+    await client.send_json_auto_id({"type": "switchplan/save", "config": bad})
     res = await client.receive_json()
     assert not res["success"] and res["error"]["code"] == "invalid_format"
 
@@ -141,24 +141,25 @@ async def test_removed_group_entity_cleaned_up(hass, setup):
     empty["themes"][0]["groups"] = []
     await _save(client, empty)
     await hass.async_block_till_done()
-    assert hass.states.get("binary_sensor.switchmanager_christmas_outdoor_windows") is None
+    assert hass.states.get("binary_sensor.switchplan_christmas_outdoor_windows") is None
 
 
-async def test_imports_old_schaltzentrale_config(hass, hass_storage, freezer, hass_ws_client):
-    hass_storage["schaltzentrale"] = {"version": 1, "minor_version": 1, "key": "schaltzentrale", "data": cfg(WIN)}
+@pytest.mark.parametrize("old_key", ["switchmanager", "schaltzentrale"])
+async def test_imports_config_of_earlier_names(hass, hass_storage, freezer, hass_ws_client, old_key):
+    hass_storage[old_key] = {"version": 1, "minor_version": 1, "key": old_key, "data": cfg(WIN)}
     await hass.config.async_set_time_zone("Europe/Berlin")
     assert await async_setup_component(hass, "http", {})
     client = await hass_ws_client(hass)
     for dep in ("frontend", "panel_custom"):
         hass.config.components.add(dep)
-    entry = MockConfigEntry(domain="switchmanager", title="SwitchManager")
+    entry = MockConfigEntry(domain="switchplan", title="SwitchPlan")
     entry.add_to_hass(hass)
-    with patch("custom_components.switchmanager.panel_custom.async_register_panel"), \
-         patch("custom_components.switchmanager.frontend.add_extra_js_url"), \
+    with patch("custom_components.switchplan.panel_custom.async_register_panel"), \
+         patch("custom_components.switchplan.frontend.add_extra_js_url"), \
          patch.object(hass.http, "async_register_static_paths", AsyncMock()):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
-    await client.send_json_auto_id({"type": "switchmanager/get"})
+    await client.send_json_auto_id({"type": "switchplan/get"})
     res = await client.receive_json()
     assert res["result"]["config"]["themes"][0]["name"] == "Christmas outdoor"
 
@@ -181,7 +182,7 @@ async def test_conflict_check_finds_other_automations(hass, setup):
          "actions": [{"action": "input_boolean.turn_on", "target": {"entity_id": "input_boolean.other"}}]},
     ]})
     await hass.async_block_till_done()
-    await client.send_json_auto_id({"type": "switchmanager/check"})
+    await client.send_json_auto_id({"type": "switchplan/check"})
     res = await client.receive_json()
     assert res["success"], res
     findings = res["result"]["groups"]["windows"]
