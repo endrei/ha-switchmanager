@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1 (25.11.2026)
+- The repository is now github.com/endrei/ha-switchplan; documentation and
+  issue links point there. Same features as 0.3.0.
+
 ## 0.3.0 (25.11.2026)
 - New name: **SwitchPlan** (domain `switchplan`), because "Switch Manager" is
   already taken in the Home Assistant world. The configuration of SwitchManager

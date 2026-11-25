@@ -1,7 +1,7 @@
 """Constants for SwitchPlan."""
 
 DOMAIN = "switchplan"
-VERSION = "0.3.0"
+VERSION = "0.3.1"
 
 STORAGE_KEY = DOMAIN
 STORAGE_VERSION = 1
