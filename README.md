@@ -52,7 +52,7 @@ automation in the editor or disable it with one click.
 ## Installation via HACS
 
 1. Open HACS, top right **⋮ → Custom repositories**.
-2. Enter `https://github.com/endrei/ha-switchmanager`, type **Integration**, add.
+2. Enter `https://github.com/endrei/ha-switchplan`, type **Integration**, add.
 3. Search for **SwitchPlan**, download it and restart Home Assistant.
 4. **Settings → Devices & services → Add integration → SwitchPlan**.
 5. **SwitchPlan** appears in the sidebar. You set up everything there.
